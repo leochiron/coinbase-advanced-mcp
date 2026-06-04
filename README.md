@@ -10,6 +10,9 @@
 > [!WARNING]
 > This software can place **real orders with real money** when you explicitly enable it. It is experimental, provided **as-is with no warranty**, and is **not financial advice**. Read the [Disclaimer](#disclaimer) before using it. You are solely responsible for every order that reaches Coinbase.
 
+> [!TIP]
+> **Setting this up with an AI assistant?** Point it at [`docs/AI_SETUP_GUIDE.md`](docs/AI_SETUP_GUIDE.md) — a step-by-step onboarding script written for the AI to walk you through installing the server, creating and linking your Coinbase API key, rehearsing in paper mode, and (optionally) deploying the remote PHP guard.
+
 ---
 
 ## What it is

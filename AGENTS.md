@@ -2,6 +2,8 @@
 
 This project is a local MCP server for Coinbase Advanced Trade. It is designed for Codex local over MCP stdio.
 
+If you are onboarding a new user (install, Coinbase key creation, linking, optional PHP guard deploy), follow `docs/AI_SETUP_GUIDE.md` — a step-by-step script written for the assistant. Core rule: never handle or print secrets in chat; have the user paste keys directly into `.env`.
+
 ## Current Project State
 
 - Main transport: `stdio`
