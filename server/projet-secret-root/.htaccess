@@ -1,0 +1,16 @@
+Options -Indexes
+DirectoryIndex index.php index.html
+
+<IfModule mod_headers.c>
+    Header set X-Robots-Tag "noindex, nofollow, noarchive"
+    Header set X-Content-Type-Options "nosniff"
+    Header set Referrer-Policy "no-referrer"
+</IfModule>
+
+<FilesMatch "^(\.htaccess|\.user\.ini|\.env|composer\.(json|lock)|package(-lock)?\.json)$">
+    Require all denied
+</FilesMatch>
+
+<FilesMatch "\.(sqlite|db|log|bak|backup|old)$">
+    Require all denied
+</FilesMatch>

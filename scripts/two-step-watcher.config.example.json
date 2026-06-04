@@ -1,0 +1,21 @@
+{
+    "version": 1,
+    "strategyId": "example-breakout-with-protection",
+    "dryRun": true,
+    "once": true,
+    "pollMs": 60000,
+    "executeParents": false,
+    "parentConfirmationText": "",
+    "liveProtectionEnabled": false,
+    "protectionConfirmationText": "",
+    "proposalId": "proposal_replace_me",
+    "orders": [
+        {
+            "productId": "BTC-EUR",
+            "orderIndex": 0,
+            "takeProfitPrice": "67200",
+            "stopLossPrice": "62850",
+            "baseIncrement": "0.00000001"
+        }
+    ]
+}

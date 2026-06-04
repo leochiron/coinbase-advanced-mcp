@@ -1,0 +1,37 @@
+{
+    "name": "coinbase-local-mcp",
+    "version": "0.1.0",
+    "description": "Local MCP server for Coinbase Advanced Trade portfolio, pricing, order dry-runs, and validated execution.",
+    "type": "module",
+    "private": true,
+    "scripts": {
+        "dev": "tsx src/index.ts",
+        "build": "tsc -p tsconfig.json",
+        "test": "vitest run",
+        "lint": "eslint .",
+        "watch:two-step": "node scripts/two-step-watcher.mjs",
+        "format": "prettier --write .",
+        "format:check": "prettier --check ."
+    },
+    "dependencies": {
+        "@coinbase/cdp-sdk": "^1.35.0",
+        "@modelcontextprotocol/sdk": "^1.12.1",
+        "better-sqlite3": "^12.10.0",
+        "dotenv": "^16.5.0",
+        "zod": "^3.25.0"
+    },
+    "devDependencies": {
+        "@eslint/js": "^9.27.0",
+        "@types/better-sqlite3": "^7.6.13",
+        "@types/node": "^20.17.50",
+        "eslint": "^9.27.0",
+        "prettier": "^3.5.3",
+        "tsx": "^4.19.4",
+        "typescript": "^5.8.3",
+        "typescript-eslint": "^8.32.1",
+        "vitest": "^3.1.4"
+    },
+    "engines": {
+        "node": ">=20.17.0"
+    }
+}

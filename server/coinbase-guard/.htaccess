@@ -1,0 +1,19 @@
+Options -Indexes
+
+<IfModule mod_headers.c>
+    Header set X-Robots-Tag "noindex, nofollow, noarchive"
+    Header set X-Content-Type-Options "nosniff"
+    Header set Referrer-Policy "no-referrer"
+</IfModule>
+
+<FilesMatch "^(\.htaccess|config\.local\.php|config\.example\.php|README\.md)$">
+    Require all denied
+</FilesMatch>
+
+<FilesMatch "\.(log|json|sqlite|db|env|bak|backup|old|txt)$">
+    Require all denied
+</FilesMatch>
+
+<FilesMatch "^(CoinbaseAdvanced|Guard)\.php$">
+    Require all denied
+</FilesMatch>
