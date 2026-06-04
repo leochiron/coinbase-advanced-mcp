@@ -202,4 +202,5 @@ If you do not accept these terms, do not enable trading and do not use this soft
 
 ## License
 
-No license file is included yet. Until one is added, all rights are reserved by the author; the code is published for reference and personal use. (An OSI-approved license such as MIT — which also disclaims warranty and liability — can be added on request.)
+Released under the [MIT License](LICENSE). The MIT terms include an explicit
+disclaimer of warranty and liability, which complements the [Disclaimer](#disclaimer) above.
