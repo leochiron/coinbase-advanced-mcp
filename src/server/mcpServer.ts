@@ -9,11 +9,14 @@ import { registerGetCoinbaseAccounts } from "../tools/getCoinbaseAccounts.js";
 import { registerGetCoinbaseProducts } from "../tools/getCoinbaseProducts.js";
 import { registerGetOrderHistory } from "../tools/getOrderHistory.js";
 import { registerGetPortfolioSnapshot } from "../tools/getPortfolioSnapshot.js";
+import { registerGetPaperPortfolio } from "../tools/getPaperPortfolio.js";
 import { registerGetProductTicker } from "../tools/getProductTicker.js";
 import { registerGetServerStatus } from "../tools/getServerStatus.js";
 import { registerListOpenOrders } from "../tools/listOpenOrders.js";
+import { registerProcessPaperOrders } from "../tools/processPaperOrders.js";
 import { registerProposeLimitOrders } from "../tools/proposeLimitOrders.js";
 import { registerProposeStopLimitOrders } from "../tools/proposeStopLimitOrders.js";
+import { registerResetPaperPortfolio } from "../tools/resetPaperPortfolio.js";
 
 export function createMcpServer(context: ToolContext): McpServer {
     const server = new McpServer(
@@ -41,6 +44,9 @@ export function createMcpServer(context: ToolContext): McpServer {
     registerCancelValidatedOrder(server, context);
     registerGetOrderHistory(server, context);
     registerGetAuditLog(server, context);
+    registerGetPaperPortfolio(server, context);
+    registerProcessPaperOrders(server, context);
+    registerResetPaperPortfolio(server, context);
 
     return server;
 }

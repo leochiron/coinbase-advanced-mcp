@@ -23,7 +23,12 @@ const envSchema = z.object({
     AUDIT_DATABASE_PATH: z.string().min(1).default("./data/audit.sqlite"),
     MCP_TRANSPORT: z.enum(["stdio", "http"]).default("stdio"),
     MCP_HTTP_PORT: z.coerce.number().int().positive().default(3333),
-    LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info")
+    LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
+    PAPER_TRADING_ENABLED: booleanFromString,
+    PAPER_STARTING_CASH: z.string().default("10000"),
+    PAPER_FEE_BPS: z.coerce.number().min(0).default(60),
+    RISK_LIMITS_ENABLED: booleanFromString,
+    MAX_DAILY_NOTIONAL: z.coerce.number().min(0).default(0)
 });
 
 export type AppEnv = ReturnType<typeof loadEnv>;
@@ -48,7 +53,12 @@ export function loadEnv() {
         auditDatabasePath,
         mcpTransport: parsed.MCP_TRANSPORT,
         mcpHttpPort: parsed.MCP_HTTP_PORT,
-        logLevel: parsed.LOG_LEVEL
+        logLevel: parsed.LOG_LEVEL,
+        paperTradingEnabled: parsed.PAPER_TRADING_ENABLED,
+        paperStartingCash: parsed.PAPER_STARTING_CASH.trim(),
+        paperFeeBps: parsed.PAPER_FEE_BPS,
+        riskLimitsEnabled: parsed.RISK_LIMITS_ENABLED,
+        maxDailyNotional: parsed.MAX_DAILY_NOTIONAL
     };
 }
 

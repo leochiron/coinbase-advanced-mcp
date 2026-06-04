@@ -7,8 +7,10 @@ import { AllocationService } from "./services/allocationService.js";
 import { AuditService } from "./services/auditService.js";
 import { OrderExecutionService } from "./services/orderExecutionService.js";
 import { OrderProposalService } from "./services/orderProposalService.js";
+import { PaperBrokerService } from "./services/paperBrokerService.js";
 import { PortfolioService } from "./services/portfolioService.js";
 import { PricingService } from "./services/pricingService.js";
+import { RiskLimitService } from "./services/riskLimitService.js";
 import { createAuditDatabase } from "./storage/database.js";
 import { createLogger } from "./utils/logger.js";
 import { redactError } from "./utils/redactSecrets.js";
@@ -23,7 +25,9 @@ async function main(): Promise<void> {
     const portfolioService = new PortfolioService(coinbaseClient, pricingService);
     const allocationService = new AllocationService(portfolioService);
     const orderProposalService = new OrderProposalService(auditService);
-    const orderExecutionService = new OrderExecutionService(coinbaseClient, auditService, env);
+    const riskLimitService = new RiskLimitService(auditService, env);
+    const paperBrokerService = new PaperBrokerService(database, auditService, pricingService, portfolioService, env);
+    const orderExecutionService = new OrderExecutionService(coinbaseClient, auditService, env, riskLimitService, paperBrokerService);
 
     const server = createMcpServer({
         env,
@@ -32,7 +36,8 @@ async function main(): Promise<void> {
         pricingService,
         allocationService,
         orderProposalService,
-        orderExecutionService
+        orderExecutionService,
+        paperBrokerService
     });
 
     process.on("SIGINT", () => {

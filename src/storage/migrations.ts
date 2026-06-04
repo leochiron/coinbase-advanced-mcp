@@ -40,5 +40,36 @@ export function runMigrations(db: Database.Database): void {
             response_json TEXT,
             created_at TEXT NOT NULL
         );
+
+        CREATE TABLE IF NOT EXISTS paper_meta (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS paper_balances (
+            asset TEXT PRIMARY KEY,
+            balance TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS paper_orders (
+            paper_order_id TEXT PRIMARY KEY,
+            client_order_id TEXT,
+            product_id TEXT NOT NULL,
+            side TEXT NOT NULL,
+            order_type TEXT NOT NULL,
+            base_size TEXT,
+            quote_size TEXT,
+            limit_price TEXT,
+            stop_price TEXT,
+            status TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            filled_at TEXT,
+            fill_price TEXT,
+            fill_size TEXT,
+            fee TEXT,
+            reason TEXT,
+            source_id TEXT
+        );
     `);
 }

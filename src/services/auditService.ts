@@ -138,6 +138,13 @@ export class AuditService {
         return id;
     }
 
+    listExecutedPayloadsSince(isoDate: string): CoinbaseOrderPayload[] {
+        return this.db
+            .prepare("SELECT payload_json FROM executions WHERE created_at >= ? ORDER BY created_at ASC")
+            .all(isoDate)
+            .map((row) => JSON.parse((row as { payload_json: string }).payload_json) as CoinbaseOrderPayload);
+    }
+
     listAuditLog(limit = 50): unknown[] {
         return this.db
             .prepare(

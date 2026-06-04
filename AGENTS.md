@@ -64,6 +64,13 @@ If the path changes on another computer, update only the `args` path.
 - Every proposal, dry-run, execution, and cancellation must be audited in SQLite.
 - Keep logs on stderr; stdout is reserved for MCP JSON-RPC.
 
+## Paper Trading & Risk Limits
+
+- `PAPER_TRADING_ENABLED=true` routes `execute_validated_order` / `cancel_validated_order` to a simulated, audited portfolio. It never calls Coinbase, does not require `COINBASE_TRADING_ENABLED`, and takes precedence over live trading when both are on. Confirmation (`CONFIRM_EXECUTE_ORDER`) and a stored proposal/dry-run are still required.
+- Paper orders rest until `process_paper_orders` evaluates fills against live prices. Inspect with `get_paper_portfolio`; wipe/reseed with `reset_paper_portfolio` (`CONFIRM_RESET_PAPER`).
+- Paper fills are simplified (order price + flat fee, no slippage/partials/bracket). Not a backtest.
+- `RISK_LIMITS_ENABLED=true` with `MAX_DAILY_NOTIONAL>0` rejects a live order before sending when the projected executed notional for the UTC day would exceed the cap. Off by default.
+
 ## Useful First Checks
 
 Ask the MCP:

@@ -3,6 +3,7 @@ import type { AllocationService } from "../services/allocationService.js";
 import type { AuditService } from "../services/auditService.js";
 import type { OrderExecutionService } from "../services/orderExecutionService.js";
 import type { OrderProposalService } from "../services/orderProposalService.js";
+import type { PaperBrokerService } from "../services/paperBrokerService.js";
 import type { PortfolioService } from "../services/portfolioService.js";
 import type { PricingService } from "../services/pricingService.js";
 
@@ -14,6 +15,7 @@ export type ToolContext = {
     allocationService: AllocationService;
     orderProposalService: OrderProposalService;
     orderExecutionService: OrderExecutionService;
+    paperBrokerService: PaperBrokerService;
 };
 
 export function toolResult(output: unknown) {

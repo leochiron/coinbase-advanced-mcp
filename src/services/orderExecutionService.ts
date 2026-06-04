@@ -3,14 +3,19 @@ import type { CoinbaseClient } from "../coinbase/coinbaseClient.js";
 import type { CoinbaseOrderPayload } from "../coinbase/coinbaseTypes.js";
 import { redactSecrets } from "../utils/redactSecrets.js";
 import type { AuditService } from "./auditService.js";
+import type { PaperBrokerService } from "./paperBrokerService.js";
+import type { RiskLimitService } from "./riskLimitService.js";
 
 type ExecutionClient = Pick<CoinbaseClient, "createOrder" | "cancelOrders" | "listOrders">;
+type ExecutionEnv = Pick<AppEnv, "tradingEnabled" | "paperTradingEnabled" | "riskLimitsEnabled">;
 
 export class OrderExecutionService {
     constructor(
         private readonly client: ExecutionClient,
         private readonly auditService: AuditService,
-        private readonly env: Pick<AppEnv, "tradingEnabled">
+        private readonly env: ExecutionEnv,
+        private readonly riskLimitService?: RiskLimitService,
+        private readonly paperBroker?: PaperBrokerService
     ) {}
 
     async executeValidatedOrder(params: { dryRunId?: string; proposalId?: string; orderIndex?: number; confirmationText: string }) {
@@ -18,15 +23,30 @@ export class OrderExecutionService {
             throw new Error('confirmationText must exactly equal "CONFIRM_EXECUTE_ORDER"');
         }
 
+        const payload = this.resolvePayload(params);
+        const sourceId = params.dryRunId ?? params.proposalId ?? "unknown";
+
+        // Optional risk guard runs before anything is sent or simulated.
+        this.riskLimitService?.assertWithinLimits(payload);
+
+        // Paper mode takes precedence over live trading and never touches Coinbase.
+        if (this.env.paperTradingEnabled) {
+            if (!this.paperBroker) {
+                throw new Error("Paper trading is enabled but the paper broker is not available.");
+            }
+            const result = await this.paperBroker.submitOrder(payload, sourceId);
+            return { ...result, clientOrderId: payload.client_order_id, timestamp: new Date().toISOString() };
+        }
+
         if (!this.env.tradingEnabled) {
             throw new Error("Real trading is disabled. Set COINBASE_TRADING_ENABLED=true only when you intend to execute live orders.");
         }
 
-        const payload = this.resolvePayload(params);
         const response = await this.client.createOrder(payload);
-        const auditLogId = this.auditService.saveExecution(params.dryRunId ?? params.proposalId ?? "unknown", payload, response);
+        const auditLogId = this.auditService.saveExecution(sourceId, payload, response);
 
         return {
+            mode: "LIVE",
             coinbaseOrderId: response.success_response?.order_id ?? response.order_id,
             clientOrderId: payload.client_order_id,
             status: response.success === false ? "FAILED" : "SENT",
@@ -39,6 +59,14 @@ export class OrderExecutionService {
     async cancelValidatedOrder(params: { orderId: string; confirmationText: string }) {
         if (params.confirmationText !== "CONFIRM_CANCEL_ORDER") {
             throw new Error('confirmationText must exactly equal "CONFIRM_CANCEL_ORDER"');
+        }
+
+        // Paper orders are cancelled in the local simulation, never on Coinbase.
+        if (this.env.paperTradingEnabled && params.orderId.startsWith("paper_")) {
+            if (!this.paperBroker) {
+                throw new Error("Paper trading is enabled but the paper broker is not available.");
+            }
+            return { mode: "PAPER", ...this.paperBroker.cancelOrder(params.orderId) };
         }
 
         if (!this.env.tradingEnabled) {

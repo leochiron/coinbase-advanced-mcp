@@ -67,6 +67,7 @@ To return to read-only mode at any time, set `COINBASE_TRADING_ENABLED=false` an
 | Analysis | `analyze_portfolio_allocation` | Read |
 | Prepare | `propose_limit_orders`, `propose_stop_limit_orders`, `create_order_dry_run` | **No** |
 | Act (locked) | `execute_validated_order`, `cancel_validated_order` | **Live** |
+| Paper | `get_paper_portfolio`, `process_paper_orders`, `reset_paper_portfolio` | **No** |
 
 ## Requirements
 
@@ -157,6 +158,41 @@ Execute dry-run X. Confirmation: CONFIRM_EXECUTE_ORDER.
 List my open orders.
 Cancel order Y. Confirmation: CONFIRM_CANCEL_ORDER.
 ```
+
+## Paper trading
+
+Paper mode lets you rehearse the **exact same workflow** (propose → dry-run → confirmed execute) against a **simulated, audited portfolio** that never touches Coinbase. It is the only simulation here that produces a full audit trail.
+
+Enable it in `.env`:
+
+```bash
+PAPER_TRADING_ENABLED=true
+PAPER_STARTING_CASH=10000   # seed cash when no Coinbase keys are present
+PAPER_FEE_BPS=60            # simulated taker fee (0.60%)
+```
+
+How it works:
+
+- **Seeding** — on first use, the paper portfolio is seeded from a real Coinbase snapshot when keys are configured, otherwise from `PAPER_STARTING_CASH` in your quote currency. Fully usable offline, with no API keys.
+- **Resting orders + deferred fills** — `MARKET` orders fill immediately at the live ticker; `LIMIT` / `STOP_LIMIT` orders rest until you call `process_paper_orders`, which evaluates them against current prices and fills any that are triggered (limit-buy fills at/below the limit, stop-sell triggers at/below the stop, etc.).
+- **Same locks** — `execute_validated_order` still requires `CONFIRM_EXECUTE_ORDER` and a stored proposal/dry-run, so paper is a faithful rehearsal of the live flow. It does **not** require `COINBASE_TRADING_ENABLED`, and if both paper and live are enabled, **paper wins**.
+- **Audited** — submissions, fills, rejections, cancellations, seeding, and resets are all written to the audit log.
+
+Tools: `get_paper_portfolio`, `process_paper_orders`, and `reset_paper_portfolio` (requires `CONFIRM_RESET_PAPER`).
+
+> [!NOTE]
+> Paper fills are a **simplified simulation**, not a backtest: fills happen at the order's stated price with a flat fee, with no slippage, partial fills, order-book depth, or attached TP/SL bracket modeling.
+
+## Risk limits
+
+An optional, **opt-in** guard for live orders, off by default so the project keeps its "you own the risk decisions" stance. v1 enforces a single rule — a maximum executed **notional per UTC day**, computed from the audit log:
+
+```bash
+RISK_LIMITS_ENABLED=true
+MAX_DAILY_NOTIONAL=500   # reject a live order once today's executed notional would exceed this; 0 = unlimited
+```
+
+When enabled, `execute_validated_order` rejects an order **before anything is sent to Coinbase** if the projected daily notional would exceed the cap. It runs in addition to (not instead of) the triple-lock confirmation model.
 
 ## Two-step protection watcher
 
