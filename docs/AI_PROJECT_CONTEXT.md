@@ -1,366 +1,349 @@
-# AI Project Context - Coinbase Local MCP
+# Contexte pedagogique du projet Coinbase Local MCP
 
-This document is a reusable context file for another AI assistant. It explains what this project is, how it works, what it must never do, and how to reason safely about the current Coinbase trading workflow.
+Ce document sert a donner du contexte a une IA externe qui doit aider a expliquer, presenter ou ecrire un cours autour de ce projet.
 
-Do not paste secrets into this document. Do not read or print `.env`, `server-ftp.env`, `server-ssh.env`, `server/coinbase-guard/config.local.php`, `.history/.env_*`, API keys, private keys, bearer tokens, status tokens, cron tokens, or full Coinbase account ids.
+Ce n'est pas un guide d'exploitation pour un agent de trading. Ce n'est pas non plus une consigne pour executer des ordres. Le but est de comprendre le projet, son architecture, ses choix techniques, ses choix de securite et les fonctionnalites qui ont ete ajoutees au fil du developpement.
 
-## 1. Project Summary
+Ne jamais inclure de secrets dans un cours ou une explication publique : pas de cle API, pas de cle privee, pas de token, pas d'identifiant complet de compte Coinbase, pas de mot de passe FTP, pas de contenu de `.env` ou de `config.local.php`.
 
-This project is a local Model Context Protocol server for Coinbase Advanced Trade.
+## Resume court
 
-Its main purpose is to let Codex or another local AI:
+Le projet est un serveur MCP local en Node.js et TypeScript qui connecte une IA locale, par exemple Codex, a Coinbase Advanced Trade.
 
-- Read Coinbase portfolio/account data.
-- Read Coinbase products and market tickers.
-- Analyse a portfolio mechanically.
-- Prepare order proposals and dry-runs.
-- Execute live orders only after explicit confirmation.
-- Cancel live orders only after explicit confirmation.
-- Audit proposals, dry-runs, executions, and cancellations in SQLite.
-- Support two-step protection workflows when Coinbase cannot create entry + protection in one accepted order.
-- Provide a separate lightweight PHP guard that can run on a remote web server/cron when the local computer is off.
+Il permet a l'IA de lire un portefeuille Coinbase, de recuperer les prix de marche, d'analyser une allocation, de preparer des ordres, de simuler des ordres en paper trading, puis, si l'utilisateur l'autorise explicitement, d'executer ou d'annuler des ordres reels.
 
-The project is intentionally not a withdrawal, transfer, send, payout, or custody movement tool. It must never implement those actions.
+Le projet est concu autour d'une idee simple : donner a l'IA un acces technique utile, mais garder l'humain responsable et decisionnaire. Par defaut, le serveur lit les donnees et prepare des ordres, mais ne place rien en reel. Toute action reelle est bloquee par plusieurs verrous : activation volontaire du trading, dry-run ou proposition preexistante, phrase de confirmation exacte et audit local.
 
-## 2. Location And Runtime
+## Probleme que le projet resout
 
-Project root on this machine:
+Les interfaces Coinbase classiques permettent de voir son portefeuille et de passer des ordres, mais elles ne sont pas pensees pour une conversation structurante avec une IA.
+
+Ce projet ajoute une couche intermediaire entre une IA locale et Coinbase :
+
+- l'IA peut recuperer l'etat du portefeuille ;
+- l'IA peut calculer des repartitions et des ecarts d'allocation ;
+- l'IA peut preparer des ordres coherents techniquement ;
+- l'utilisateur peut verifier les ordres avant execution ;
+- l'historique local garde une trace des propositions, dry-runs, executions et annulations ;
+- aucune fonction de retrait ou de transfert n'existe dans le projet.
+
+Le projet ne cherche pas a creer un robot de trading autonome. Il construit plutot un workflow de trading assiste par IA, avec validation humaine.
+
+## Architecture generale
+
+L'architecture principale est la suivante :
 
 ```text
-C:\path\to\coinbase-advanced-mcp
+IA locale / client MCP
+        |
+        | MCP stdio
+        v
+Serveur Node.js + TypeScript
+        |
+        | Services internes
+        v
+Coinbase Advanced Trade API
+        |
+        v
+Portefeuille, produits, prix, ordres, historique
+
+En parallele :
+
+SQLite local
+        |
+        v
+Audit, dry-runs, propositions, paper trading, cancellations
+
+Optionnel :
+
+PHP guard distant
+        |
+        v
+Cron de surveillance quand l'ordinateur local est eteint
 ```
 
-Main runtime:
+Le transport principal est MCP `stdio`. Cela signifie que le client IA lance le serveur localement et communique avec lui via stdin/stdout en JSON-RPC. Ce choix evite d'exposer un serveur HTTP local inutilement.
 
-- Node.js + TypeScript.
-- Package type: ESM.
-- Main source entry: `src/index.ts`.
-- Compiled entry: `dist/index.js`.
-- Main transport: MCP over `stdio`.
-- HTTP transport: present only as an intentionally disabled placeholder.
-- Audit DB: `data/audit.sqlite` by default.
+Un transport HTTP existe dans l'arborescence, mais il est volontairement laisse inactif comme placeholder. L'objectif prioritaire reste l'usage local.
 
-Required commands from project root:
+## Technologies utilisees
 
-```bash
-npm install
-npm run build
-npm test
-npm run lint
+Le projet utilise :
+
+- Node.js 20+ ;
+- TypeScript strict ;
+- SDK MCP TypeScript officiel ;
+- Zod pour valider les entrees des outils ;
+- dotenv pour charger la configuration ;
+- SQLite via `better-sqlite3` pour l'audit local ;
+- Vitest pour les tests ;
+- ESLint et Prettier pour la qualite de code ;
+- Coinbase Advanced Trade API pour les comptes, produits, tickers, ordres et historique ;
+- un petit module PHP optionnel pour une surveillance distante par cron.
+
+## Structure du projet
+
+Les principaux dossiers sont :
+
+```text
+src/
+    coinbase/    Client Coinbase, authentification JWT, types et erreurs
+    config/      Chargement et validation de l'environnement
+    server/      Creation du serveur MCP et transports
+    services/    Logique metier : portefeuille, prix, allocation, ordres, audit
+    storage/     SQLite et migrations
+    tools/       Definition des outils MCP exposes a l'IA
+    utils/       Validation, redaction des secrets, logs, idempotence
+
+scripts/
+    Watcher deux etapes et scripts de deploiement du guard PHP
+
+server/
+    coinbase-guard/     Guard PHP/cron optionnel
+    projet-secret-root/ Protection minimale du dossier web parent
+
+docs/
+    Documentation, contexte pedagogique, watcher, onboarding
+
+knowledge/
+    Registre de sources validees par l'utilisateur
+
+data/
+    Etat runtime local : audit SQLite, logs, watcher, paper trading
 ```
 
-Manual dev start:
+## Le serveur MCP
 
-```bash
-npm run dev
-```
+Le serveur MCP expose des outils que l'IA peut appeler. Ces outils sont en snake_case, par exemple :
 
-Important: `npm run dev` starts an MCP stdio server. It is not an HTTP console. Stdout must stay reserved for MCP JSON-RPC. Logs must go to stderr.
+- `get_server_status`
+- `get_coinbase_accounts`
+- `get_coinbase_products`
+- `get_product_ticker`
+- `get_portfolio_snapshot`
+- `analyze_portfolio_allocation`
+- `propose_limit_orders`
+- `propose_stop_limit_orders`
+- `create_order_dry_run`
+- `execute_validated_order`
+- `list_open_orders`
+- `cancel_validated_order`
+- `get_order_history`
+- `get_audit_log`
+- `get_paper_portfolio`
+- `process_paper_orders`
+- `reset_paper_portfolio`
+- `get_knowledge_base`
+- `add_knowledge_source`
 
-## 3. Environment And Secrets
+Chaque outil recoit des parametres strictement valides par Zod. Les erreurs recuperables sont renvoyees comme erreurs d'outil, pas comme crash du serveur.
 
-Environment is loaded by `src/config/env.ts`.
+Le serveur ecrit ses logs sur stderr. En mode MCP stdio, stdout est reserve au protocole MCP.
 
-The server loads `.env` from the project root even if `dist/index.js` is launched from another working directory. This matters when Codex or a scheduler starts the process from outside the repo.
+## Integration Coinbase
 
-Important environment variables:
+Le client Coinbase encapsule les endpoints Advanced Trade `/api/v3/brokerage`.
+
+Il sait notamment :
+
+- lister les comptes ;
+- lister les produits ;
+- lire un produit ;
+- lire un ticker ;
+- recuperer un ordre ;
+- lister l'historique d'ordres ;
+- creer un ordre ;
+- annuler un ordre ;
+- recuperer la decomposition de portefeuille quand Coinbase la fournit.
+
+L'authentification se fait avec une cle CDP Coinbase :
+
+- `COINBASE_API_KEY_NAME` ;
+- `COINBASE_API_PRIVATE_KEY`.
+
+Le serveur genere un Bearer token JWT par requete. Les cles Coinbase au format EC SEC1, par exemple `-----BEGIN EC PRIVATE KEY-----`, sont normalisees en PKCS#8 avant signature.
+
+Le projet ne contient aucune fonction de retrait, transfert, send, payout ou equivalent. Meme si une cle Coinbase avait des permissions trop larges, le serveur n'expose pas d'outil MCP permettant de sortir des fonds.
+
+## Configuration
+
+Les variables principales sont :
 
 ```text
 COINBASE_API_KEY_NAME
 COINBASE_API_PRIVATE_KEY
 COINBASE_API_BASE_URL=https://api.coinbase.com
-COINBASE_TRADING_ENABLED=false|true
+COINBASE_TRADING_ENABLED=false
 DEFAULT_QUOTE_CURRENCY=EUR
 AUDIT_DATABASE_PATH=./data/audit.sqlite
-MCP_TRANSPORT=stdio|http
+KNOWLEDGE_SOURCES_PATH=./knowledge/sources.json
+MCP_TRANSPORT=stdio
 MCP_HTTP_PORT=3333
 LOG_LEVEL=info
+PAPER_TRADING_ENABLED=false
+PAPER_STARTING_CASH=10000
+PAPER_FEE_BPS=60
+RISK_LIMITS_ENABLED=false
+MAX_DAILY_NOTIONAL=0
 ```
 
-Security rules:
+Le fichier `.env` n'est pas versionne. Le serveur charge `.env` depuis la racine du projet, meme si le processus est lance depuis un autre dossier.
 
-- Never print `.env`.
-- Never print Coinbase API key name, private key, bearer token, cron token, status token, or full account ids.
-- Never commit secret files.
-- Never expose transfer/withdrawal/send/payout functionality.
-- Live trading must be disabled by default.
+## Mode lecture et analyse
 
-Implementation note: Coinbase SEC1 EC private keys such as `-----BEGIN EC PRIVATE KEY-----` are normalized to PKCS#8 before JWT generation.
+La partie lecture sert a comprendre l'etat du portefeuille :
 
-## 4. Coinbase Client
+- balances par actif ;
+- valeur estimee en devise de reference ;
+- poids par actif ;
+- actifs non valorises si une paire de prix manque ;
+- ordres ouverts ;
+- historique Coinbase et historique local.
 
-Main file: `src/coinbase/coinbaseClient.ts`.
+`get_portfolio_snapshot` utilise en priorite Coinbase Portfolio Breakdown quand disponible. Cela rapproche le total de l'interface Coinbase, mais il faut garder en tete que certaines positions peuvent etre stakees ou non liquides. Un solde visible dans le portefeuille n'est pas toujours vendable directement en spot.
 
-The client wraps Coinbase Advanced Trade `/api/v3/brokerage` endpoints:
+`analyze_portfolio_allocation` fait une analyse mecanique. Il peut comparer le portefeuille actuel a une allocation cible, calculer les ecarts, identifier les surponderations et sous-ponderations, et signaler une concentration. Il ne doit pas etre presente comme conseil financier personnalise.
 
-- `listAccounts()`
-- `listProducts()`
-- `getProduct(productId)`
-- `getProductTicker(productId)`
-- `getOrder(orderId)`
-- `listPortfolios()`
-- `getPortfolioBreakdown(portfolioUuid, currency)`
-- `createOrder(payload)`
-- `listOrders(params)`
-- `cancelOrders(orderIds)`
+## Workflow de preparation d'ordre
 
-Auth:
+Le projet distingue clairement preparation et execution.
 
-- Uses Coinbase CDP API key name + private key.
-- Generates a bearer token per request.
-- JWT signing uses only the API path, not the query string.
+La preparation peut passer par :
 
-Responses and errors are passed through redaction helpers so secrets are not surfaced.
+- `propose_limit_orders` ;
+- `propose_stop_limit_orders` ;
+- `create_order_dry_run`.
 
-## 5. MCP Tools
+Ces outils construisent des payloads Coinbase valides localement et les enregistrent dans SQLite, mais ne les envoient pas a Coinbase.
 
-The MCP server is created in `src/server/mcpServer.ts`.
+Le but pedagogique important : une IA peut aider a structurer un ordre sans avoir le pouvoir de l'envoyer immediatement.
 
-Registered tools:
+Exemple de logique :
 
-```text
-get_server_status
-get_coinbase_accounts
-get_coinbase_products
-get_product_ticker
-get_portfolio_snapshot
-analyze_portfolio_allocation
-propose_limit_orders
-propose_stop_limit_orders
-create_order_dry_run
-execute_validated_order
-list_open_orders
-cancel_validated_order
-get_order_history
-get_audit_log
-```
+1. l'utilisateur demande une idee d'ordre ;
+2. l'IA prepare un dry-run ;
+3. le dry-run contient le payload exact ;
+4. l'utilisateur inspecte et valide ;
+5. seulement ensuite une execution reelle peut etre demandee.
 
-### Tool Intent
+## Execution et annulation reelles
 
-`get_server_status`
+Une execution reelle exige :
 
-- Confirms server startup, transport, Coinbase configuration, trading flag, and audit DB availability.
+- `COINBASE_TRADING_ENABLED=true` ;
+- un `dryRunId` ou `proposalId` existant ;
+- `confirmationText` exactement egal a `CONFIRM_EXECUTE_ORDER`.
 
-`get_coinbase_accounts`
+Une annulation reelle exige :
 
-- Returns Coinbase accounts/balances.
-- Must not expose full account ids to the user unless the code already redacts them appropriately.
+- `COINBASE_TRADING_ENABLED=true` ;
+- l'id d'un ordre Coinbase ;
+- `confirmationText` exactement egal a `CONFIRM_CANCEL_ORDER`.
 
-`get_coinbase_products`
+Le mot "go" n'est jamais suffisant pour executer ou annuler. Cette regle a ete appliquee en pratique pendant le developpement : lorsque l'utilisateur disait "go", l'assistant devait demander la phrase exacte.
 
-- Lists Coinbase products, optionally by quote currency/product type.
+Chaque execution ou annulation est audittee localement.
 
-`get_product_ticker`
+## Audit SQLite
 
-- Fetches ticker snapshot for one product such as `BTC-EUR`.
+SQLite conserve :
 
-`get_portfolio_snapshot`
+- les propositions d'ordres ;
+- les dry-runs ;
+- les executions ;
+- les annulations ;
+- les evenements de paper trading ;
+- les ajouts de sources de connaissance.
 
-- Returns estimated portfolio value in a quote currency.
-- Prefers Coinbase Portfolio Breakdown when available.
-- Can include staked balances in portfolio breakdown. Staked ETH/SOL should not be assumed liquid or sellable through spot orders.
+Cette base permet de reconstruire ce que l'IA a propose, ce qui a ete envoye, ce que Coinbase a repondu, et quelles actions ont ete confirmees.
 
-`analyze_portfolio_allocation`
-
-- Mechanical allocation analysis against a target.
-- Must not be treated as financial advice.
-
-`propose_limit_orders`
-
-- Builds one or more LIMIT order payloads and saves a proposal locally.
-- Does not send anything to Coinbase.
-
-`propose_stop_limit_orders`
-
-- Builds one or more STOP_LIMIT order payloads and saves a proposal locally.
-- Does not send anything to Coinbase.
-- Stop direction is inferred from side:
-  - SELL => stop down.
-  - BUY => stop up.
-
-`create_order_dry_run`
-
-- Builds one complete order payload and saves it locally.
-- Does not send anything to Coinbase.
-
-`execute_validated_order`
-
-- Sends a previously saved proposal order or dry-run to Coinbase.
-- Requires `COINBASE_TRADING_ENABLED=true`.
-- Requires `confirmationText` exactly equal to `CONFIRM_EXECUTE_ORDER`.
-- Saves execution in SQLite.
-
-`list_open_orders`
-
-- Lists open/pending/queued Coinbase orders, optionally by product.
-
-`cancel_validated_order`
-
-- Cancels one live Coinbase order.
-- Requires `COINBASE_TRADING_ENABLED=true`.
-- Requires `confirmationText` exactly equal to `CONFIRM_CANCEL_ORDER`.
-- Saves cancellation in SQLite.
-
-`get_order_history`
-
-- Reads Coinbase history, local audit history, or both.
-
-`get_audit_log`
-
-- Reads local audit log entries.
-
-## 6. Order Model
-
-Defined mainly by:
-
-- `src/services/orderProposalService.ts`
-- `src/services/orderExecutionService.ts`
-- `src/utils/validators.ts`
-- `src/coinbase/coinbaseTypes.ts`
-
-Supported internal order types:
-
-```text
-MARKET
-LIMIT
-STOP_LIMIT
-BRACKET
-```
-
-Supported sides:
-
-```text
-BUY
-SELL
-```
-
-Supported time in force values:
-
-```text
-GTC
-GTD
-IOC
-FOK
-```
-
-Important constraints:
-
-- Numeric inputs are decimal strings, positive, no scientific notation.
-- Product ids must look like `BTC-EUR`.
-- MARKET and LIMIT require exactly one of `baseSize` or `quoteSize`.
-- STOP_LIMIT requires `baseSize`, `stopPrice`, `limitPrice`, and GTC.
-- BRACKET requires `baseSize`, `limitPrice`, and `stopPrice`.
-- Attached TP/SL requires both `takeProfitPrice` and `stopLossPrice`.
-- Attached TP/SL is supported only with GTC.
-
-Payload mapping:
-
-- MARKET => `market_market_ioc` or `market_market_fok`.
-- LIMIT GTC => `limit_limit_gtc`.
-- LIMIT IOC => `sor_limit_ioc`.
-- LIMIT FOK => `limit_limit_fok`.
-- STOP_LIMIT GTC => `stop_limit_stop_limit_gtc`.
-- BRACKET => `trigger_bracket_gtc`.
-- Attached TP/SL => `attached_order_configuration.trigger_bracket_gtc`.
-
-Coinbase limitations observed in real use:
-
-- Coinbase rejected BUY STOP_LIMIT orders with attached TP/SL (`PREVIEW_INVALID_ORDER_TYPE_FOR_ATTACHED`).
-- Coinbase accepted LIMIT BUY orders with attached TP/SL.
-- Coinbase accepted separate BRACKET SELL protection orders.
-- Therefore, a "buy only if rebound confirms" flow often needs two steps: submit BUY STOP_LIMIT first, then submit protection after fill.
-
-## 7. Safety And Confirmation Model
-
-Live execution path:
-
-1. Create proposal or dry-run.
-2. User inspects proposal/dry-run.
-3. Confirm exact text:
-
-```text
-CONFIRM_EXECUTE_ORDER
-```
-
-4. Call `execute_validated_order`.
-5. Execution is audited in SQLite.
-
-Live cancellation path:
-
-1. Re-check live order status with Coinbase.
-2. User confirms exact text:
-
-```text
-CONFIRM_CANCEL_ORDER
-```
-
-3. Call `cancel_validated_order`.
-4. Cancellation is audited in SQLite.
-
-Never execute or cancel from natural language like "go" alone. The exact confirmation text is required.
-
-Never bypass the proposal/dry-run requirement. `execute_validated_order` must reference a saved `proposalId` or `dryRunId`.
-
-## 8. Audit Database
-
-Default path:
+Le fichier par defaut est :
 
 ```text
 data/audit.sqlite
 ```
 
-Migrations in `src/storage/migrations.ts` create:
+Il s'agit d'un etat runtime local, pas d'un fichier a publier.
+
+## Paper trading
+
+Le paper trading a ete ajoute recemment.
+
+Il permet de repeter le meme workflow que le trading reel, mais sans appeler Coinbase pour l'execution. Les ordres sont simules et audites.
+
+Caracteristiques :
+
+- active par `PAPER_TRADING_ENABLED=true` ;
+- prend le dessus sur le trading live si les deux sont actives ;
+- exige quand meme les confirmations ;
+- peut etre alimente par un portefeuille simule ;
+- `process_paper_orders` evalue les ordres en attente contre les prix live ;
+- `reset_paper_portfolio` remet a zero apres `CONFIRM_RESET_PAPER`.
+
+Limite importante : ce n'est pas un backtest. La simulation ne modelise pas correctement le carnet d'ordres, les slippages, les fills partiels ou toute la complexite des brackets.
+
+## Risk limits
+
+Un module optionnel de limite de risque a ete ajoute.
+
+Il peut bloquer une execution reelle avant envoi a Coinbase si le notional execute sur la journee UTC depasse une limite configuree.
+
+Variables :
 
 ```text
-audit_log
-order_proposals
-order_dry_runs
-executions
-cancellations
+RISK_LIMITS_ENABLED=true
+MAX_DAILY_NOTIONAL=500
 ```
 
-Purpose:
+Ce module est desactive par defaut. Il ne cherche pas a juger si un ordre est "bon" ou "mauvais". Il applique uniquement une contrainte technique definie par l'utilisateur.
 
-- Preserve every proposal.
-- Preserve every dry-run.
-- Preserve every live execution response.
-- Preserve every cancellation response.
-- Make trading actions traceable.
+## Knowledge base : registre de sources
 
-The audit DB is local runtime state, not a public source of truth for secrets.
+Un developpement recent ajoute un registre de sources validees par l'utilisateur.
 
-## 9. Portfolio And Pricing Services
+Fichiers :
 
-Portfolio service:
+```text
+knowledge/sources.example.json
+knowledge/sources.json
+src/services/knowledgeService.ts
+src/tools/getKnowledgeBase.ts
+src/tools/addKnowledgeSource.ts
+```
 
-- File: `src/services/portfolioService.ts`.
-- Uses Coinbase Portfolio Breakdown when possible.
-- Falls back to accounts + products + ticker pricing.
-- Computes:
-  - quantity
-  - available balance
-  - hold balance
-  - estimated price
-  - estimated value
-  - portfolio weight
-  - valuation status
+Objectif :
 
-Pricing service:
+L'utilisateur peut constituer une liste de sources qu'il juge fiables : calendrier macro, dashboard on-chain, principes personnels de risque, documents, liens de reference, etc.
 
-- File: `src/services/pricingService.ts`.
-- Can list products.
-- Can fetch ticker.
-- Can estimate an asset price against a quote currency.
-- Uses product price first, then ticker trade/bid/ask fallback.
+Avant une analyse de marche ou une proposition d'ordres, l'IA doit consulter `get_knowledge_base` pour savoir quelles sources l'utilisateur veut privilegier.
 
-Important:
+Le projet ne laisse pas l'IA ajouter une source librement. `add_knowledge_source` exige :
 
-- Portfolio Breakdown can include staked positions.
-- Spot sell orders should use liquid/available balances and open-order holds, not blindly the total portfolio breakdown.
+```text
+CONFIRM_ADD_SOURCE
+```
 
-## 10. Two-Step Watcher
+Cela en fait un outil pedagogiquement interessant : on ne se contente pas de demander a une IA d'aller chercher "des sources". On lui donne un mecanisme controle pour utiliser les sources que l'utilisateur a explicitement validees.
 
-Main files:
+Le fichier `knowledge/sources.example.json` est un modele. Le vrai fichier `knowledge/sources.json` est un etat utilisateur et n'a pas vocation a etre publie tel quel.
+
+## Deux-step watcher
+
+Coinbase n'accepte pas toujours les ordres complexes que l'on aimerait exprimer en un seul payload.
+
+Observation concrete du projet :
+
+- les ordres `LIMIT BUY` avec TP/SL attache ont ete acceptes ;
+- les ordres `BUY STOP_LIMIT` avec TP/SL attache ont ete refuses par Coinbase avec `PREVIEW_INVALID_ORDER_TYPE_FOR_ATTACHED` ;
+- les protections separees en `SELL BRACKET` ont ete acceptees.
+
+Le watcher deux etapes sert donc a gerer ce genre de cas :
+
+1. placer ou surveiller un ordre parent ;
+2. attendre que Coinbase confirme un fill ;
+3. poser ensuite un ordre de protection sur la taille reellement remplie.
+
+Fichiers :
 
 ```text
 scripts/two-step-watcher.mjs
@@ -368,124 +351,84 @@ scripts/two-step-watcher.config.example.json
 docs/TWO_STEP_WATCHER.md
 ```
 
-Purpose:
+Le watcher ecrit son etat et ses logs dans `data/`. Il evite de doubler les protections deja creees.
 
-1. Submit or monitor parent entry orders.
-2. Poll Coinbase for fills.
-3. Submit protective `trigger_bracket_gtc` orders for newly filled size.
+## PHP guard distant
 
-Use case:
-
-- Coinbase cannot express a desired order as a single accepted payload.
-- Example: BUY STOP_LIMIT entry plus automatic TP/SL protection.
-
-Important behavior:
-
-- Build first: `npm run build`.
-- Watcher imports from `dist/`.
-- State/log files are written under `data/`.
-- `AUDIT_DATABASE_PATH` is resolved from the project root, avoiding audit drift if started from another folder.
-- `--dry-run` never submits live parent or protection orders.
-- `--once` performs one controlled polling pass.
-- `executeParents=true` requires `parentConfirmationText: "CONFIRM_EXECUTE_ORDER"`.
-- `liveProtectionEnabled=true` requires `protectionConfirmationText: "CONFIRM_EXECUTE_ORDER"`.
-- State prevents duplicate protection for already protected filled size.
-
-## 11. Remote PHP Guard
-
-Folder:
+Un composant separe existe sous :
 
 ```text
 server/coinbase-guard
 ```
 
-Purpose:
+Ce n'est pas un serveur MCP. C'est un petit programme PHP deployable sur un hebergement web avec cron.
 
-- Lightweight PHP/cron fallback for when the local computer is off.
-- It manages only explicitly listed order ids.
-- It can cancel matching open orders when a configured rule triggers.
-- It can email the address configured in `config.local.php`.
-- It can watch explicitly listed parent buy orders and submit a backup sell bracket after fill.
+Il sert de garde distant quand l'ordinateur local est eteint.
 
-Important files:
+Il peut :
 
-```text
-server/coinbase-guard/cron.php
-server/coinbase-guard/status.php
-server/coinbase-guard/lib/CoinbaseClient.php
-server/coinbase-guard/lib/Guard.php
-server/coinbase-guard/config.example.php
-server/coinbase-guard/config.local.php
-```
+- verifier uniquement des ordres explicitement listes ;
+- annuler certains ordres selon des regles configurees ;
+- surveiller des achats parents explicitement listes ;
+- poser une protection de secours apres fill ;
+- exposer un `status.php` protege par token ;
+- envoyer des emails de notification.
 
-Do not print `config.local.php`.
+Il ne fait pas de retrait, transfert, send ou payout.
 
-Remote intended path:
+Les fichiers sensibles comme `config.local.php` et le dossier `state/` sont proteges par `.htaccess`. Les scripts de deploiement FTP existent, mais les secrets FTP et les tokens ne doivent jamais etre publics.
 
-```text
-https://your-domain.example.com/mcp-coinbase/
-```
+## Strategie de trading observee pendant le developpement
 
-Cron:
+Le projet a ete teste avec une logique de trading prudente et humaine :
 
-- Host cron should call `cron.php` every 10 minutes.
-- `cron.php` requires a private token.
-- `status.php` requires a private status token.
+- conserver beaucoup de cash pendant les baisses ;
+- utiliser des petits ordres ;
+- preferer les brackets et stops ;
+- eviter les achats de marche en panique ;
+- utiliser des achats bas avec TP/SL ;
+- utiliser des stop-limit de reprise si le marche rebondit ;
+- classer certains petits tickets comme purement speculatifs ;
+- accepter que certains tickets soient stoppes rapidement.
 
-Safety:
+Cette partie est importante pour un cours : le projet ne promet pas de gagner. Il montre plutot comment une IA peut structurer, suivre, documenter et securiser un processus de decision.
 
-- No withdrawals/transfers/sends/payouts.
-- No automatic order discovery by default.
-- Only listed order ids are managed.
-- Live cancellation requires `CONFIRM_CANCEL_ORDER` in server config.
-- Live backup protection requires `CONFIRM_EXECUTE_ORDER` in server config.
-- `.htaccess` blocks local config and state files.
+Exemple reel de lecon technique :
 
-## 12. Current Trading Philosophy
+Un plan de rachat automatique avec `BUY STOP_LIMIT` et TP/SL attache semblait logique, mais Coinbase l'a refuse. Il a donc fallu comprendre la contrainte API et envisager un workflow en deux etapes. C'est un bon exemple de difference entre une intention strategique et ce que l'API accepte techniquement.
 
-The trading workflow used in recent sessions is not fully automated portfolio management. It is a human-approved, AI-assisted order workflow.
+## Securite : principes a expliquer dans un cours
 
-Core principles:
+Les points de securite les plus importants :
 
-- Prefer protection over prediction.
-- Avoid market buys during panic unless explicitly intended.
-- Use cash as a shield during drawdowns.
-- Re-enter through conditional orders if rebound confirms.
-- Buy lower only in small protected ladder orders.
-- Keep moonshot positions small and explicitly classified.
-- Prefer stablecoin exits when reasonable for tax deferral, but do not force extra conversions if they add spread/complexity.
+1. Aucun retrait ni transfert n'est implemente.
+2. Le trading live est desactive par defaut.
+3. Une execution exige une proposition ou un dry-run preexistant.
+4. Une execution exige `CONFIRM_EXECUTE_ORDER`.
+5. Une annulation exige `CONFIRM_CANCEL_ORDER`.
+6. Les secrets sont rediges avant logs et retours.
+7. Les actions sont auditees.
+8. Le mode paper permet de repeter le workflow sans argent reel.
+9. Le registre de sources evite que l'IA s'appuie uniquement sur des sources non controlees.
+10. Les limites du broker et de l'API sont traitees comme des contraintes reelles, pas comme des details.
 
-Common strategy patterns:
+## Tests et qualite
 
-1. Protective stop/limit or bracket sells for existing spot positions.
-2. BUY STOP_LIMIT for rebound confirmation.
-3. LIMIT BUY with attached TP/SL for crash ladder entries.
-4. Separate BRACKET SELL after a BUY STOP_LIMIT fill when Coinbase cannot attach TP/SL.
-5. Split speculative moonshot exits into tranches.
+Le projet contient des tests Vitest pour :
 
-## 13. Live Portfolio/Order State
+- l'authentification Coinbase ;
+- le client Coinbase ;
+- les services de portefeuille ;
+- l'allocation ;
+- la validation d'ordres ;
+- les propositions d'ordres ;
+- l'execution ;
+- l'audit ;
+- le paper trading ;
+- les risk limits ;
+- le knowledge service.
 
-Personal portfolio balances and live order ids are intentionally kept out of this
-public repository. Always query the live state before acting, never assume an order
-referenced anywhere in this document is still open:
-
-```text
-get_portfolio_snapshot quoteCurrency=EUR
-list_open_orders
-get_order_history source=BOTH limit=100
-```
-
-Any BUY STOP_LIMIT fill has no attached protection. If one fills, create a protective
-SELL BRACKET dry-run/proposal for the actual filled size and execute it only after
-explicit confirmation.
-
-## 14. Recommended AI Operating Procedure
-
-When another AI receives this project:
-
-1. Read this file and `AGENTS.md`.
-2. Do not read secret files.
-3. Run from project root:
+Commandes :
 
 ```bash
 npm run build
@@ -493,60 +436,55 @@ npm test
 npm run lint
 ```
 
-4. Ask the MCP/read API for:
+Au moment de la mise a jour de ce document, les controles passaient avec 54 tests.
 
-```text
-get_server_status
-get_portfolio_snapshot quoteCurrency=EUR
-list_open_orders
-get_order_history source=BOTH limit=100
-get_audit_log
-```
+## Etat des developpements recents
 
-5. Re-check current Coinbase state before giving trading advice.
-6. Never assume an order listed in this document is still open.
-7. For any live order:
-   - create proposal/dry-run first,
-   - explain it,
-   - wait for exact confirmation,
-   - execute,
-   - verify with Coinbase,
-   - summarize order ids/statuses.
-8. For any cancellation:
-   - re-check order status,
-   - wait for exact confirmation,
-   - cancel,
-   - verify status,
-   - summarize.
-9. Treat all trading suggestions as informational, not financial advice.
-10. Distinguish clearly between:
-    - protecting existing exposure,
-    - buying a dip,
-    - buying confirmed rebound,
-    - speculative moonshot,
-    - tax-aware stablecoin exit.
+Commits deja presents :
 
-## 15. Known Practical Gotchas
+- release initiale du serveur MCP Coinbase ;
+- ajout de tests Coinbase auth/client ;
+- ajout de la licence MIT ;
+- ajout du paper trading audite ;
+- ajout du risk limit quotidien ;
+- ajout du guide d'onboarding IA.
 
-- `better-sqlite3` can fail after Node version changes with a native ABI mismatch. Fix with:
+Developpement en cours visible dans le workspace :
 
-```bash
-npm rebuild better-sqlite3
-```
+- registre de sources `knowledge/` ;
+- `KnowledgeService` ;
+- outils `get_knowledge_base` et `add_knowledge_source` ;
+- variable `KNOWLEDGE_SOURCES_PATH` ;
+- integration de cette knowledge base dans le status serveur et les instructions MCP.
 
-- Coinbase can reject multiple statuses combined with `OPEN` in some list order calls. Use `orderStatus: ["OPEN"]` when necessary.
-- Coinbase Portfolio Breakdown and Coinbase UI can differ slightly because prices move between refreshes.
-- Product increments matter. Respect `base_increment`, `quote_increment`, and `price_increment`. Round sell size down, never up.
-- Do not assume all portfolio assets are tradable against EUR. Some are USDC pairs or delisted on public exchange endpoints.
-- Public Coinbase Exchange endpoints and Advanced Trade endpoints can disagree on product availability. Prefer authenticated Advanced Trade product data for actual order support.
-- Existing `dist/` may be stale; build before running watcher or MCP from compiled files.
-- Runtime files under `data/` are ignored by Git.
+Ce developpement vise a enrichir la qualite des analyses futures en donnant a l'IA une base de sources validees par l'utilisateur.
 
-## 16. Short Prompt To Feed Another AI
+## Limites du projet
 
-Use this if a compact bootstrap prompt is needed:
+Le projet reste experimental.
 
-```text
-You are helping with a local Node/TypeScript MCP server for Coinbase Advanced Trade. Read docs/AI_PROJECT_CONTEXT.md and AGENTS.md first. Never read or print secrets. Never implement withdrawals/transfers/sends/payouts. Live execution requires an existing proposal/dry-run, COINBASE_TRADING_ENABLED=true, and exact confirmation text CONFIRM_EXECUTE_ORDER. Live cancellation requires exact CONFIRM_CANCEL_ORDER. Always audit, verify Coinbase status after actions, and treat trading output as informational rather than financial advice. Re-check live portfolio and open orders before acting.
-```
+Limites importantes :
 
+- il ne donne pas de conseil financier ;
+- il ne garantit pas qu'une strategie gagne ;
+- il depend des contraintes et erreurs possibles de l'API Coinbase ;
+- certains actifs peuvent etre visibles dans le portefeuille mais non tradables directement ;
+- certains ordres acceptes en dry-run local peuvent etre refuses par Coinbase ;
+- le paper trading simplifie la realite ;
+- le PHP guard est un filet de securite minimal, pas une plateforme de trading complete ;
+- les donnees de marche et le portefeuille changent constamment.
+
+## Angle possible pour un cours
+
+Un cours peut presenter ce projet comme une etude de cas sur :
+
+- l'integration d'une IA avec une API financiere ;
+- le protocole MCP comme interface entre une IA et un outil local ;
+- la difference entre lecture, simulation, preparation et execution ;
+- la securisation d'actions dangereuses par confirmations explicites ;
+- l'audit local des decisions ;
+- les contraintes reelles des APIs de trading ;
+- le passage d'un prompt naturel a un payload d'ordre structure ;
+- l'importance de separer strategie, validation technique et responsabilite utilisateur.
+
+Le message central : ce projet ne rend pas une IA "autonome" sur un compte financier. Il montre comment encadrer une IA pour qu'elle aide a analyser et preparer des actions, tout en gardant l'utilisateur au centre de la decision.
