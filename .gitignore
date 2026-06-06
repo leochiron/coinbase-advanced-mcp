@@ -13,6 +13,10 @@ server-ssh.env
 server-ftp.env
 scripts/*.local.json
 scripts/*.plan-*.json
+
+# Operator-curated knowledge sources are private; only the example template is committed.
+knowledge/sources.json
+knowledge/*.local.json
 server/**/config.local.php
 server/**/state/
 *.log

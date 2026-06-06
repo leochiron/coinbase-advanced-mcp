@@ -7,7 +7,8 @@ export function registerAnalyzePortfolioAllocation(server: McpServer, context: T
     server.registerTool(
         "analyze_portfolio_allocation",
         {
-            description: "Mechanically compare current portfolio allocation to an optional target allocation.",
+            description:
+                "Mechanically compare current portfolio allocation to an optional target allocation. Consult get_knowledge_base first and ground the analysis in the operator's validated sources.",
             inputSchema: z
                 .object({
                     targetAllocation: z.record(z.number().min(0)).optional(),

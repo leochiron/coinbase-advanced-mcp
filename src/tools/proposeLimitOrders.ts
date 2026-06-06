@@ -8,7 +8,7 @@ export function registerProposeLimitOrders(server: McpServer, context: ToolConte
     server.registerTool(
         "propose_limit_orders",
         {
-            description: "Prepare limit orders without sending them and persist the proposal locally.",
+            description: "Prepare limit orders without sending them and persist the proposal locally. Consult get_knowledge_base first.",
             inputSchema: z.object({ ordersIntent: z.array(limitOrderIntentSchema).min(1) }).strict()
         },
         async ({ ordersIntent }) => safeTool(() => context.orderProposalService.proposeLimitOrders(ordersIntent))

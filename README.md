@@ -71,6 +71,7 @@ To return to read-only mode at any time, set `COINBASE_TRADING_ENABLED=false` an
 | Prepare | `propose_limit_orders`, `propose_stop_limit_orders`, `create_order_dry_run` | **No** |
 | Act (locked) | `execute_validated_order`, `cancel_validated_order` | **Live** |
 | Paper | `get_paper_portfolio`, `process_paper_orders`, `reset_paper_portfolio` | **No** |
+| Knowledge | `get_knowledge_base`, `add_knowledge_source` (confirmed) | **No** |
 
 ## Requirements
 
@@ -161,6 +162,20 @@ Execute dry-run X. Confirmation: CONFIRM_EXECUTE_ORDER.
 List my open orders.
 Cancel order Y. Confirmation: CONFIRM_CANCEL_ORDER.
 ```
+
+## Knowledge base — your validated sources
+
+The assistant should not reason from diffuse, unvetted knowledge. This feature gives it a **precise, operator-curated set of trusted sources** to consult before any analysis or order proposal.
+
+- **You curate it, and it's your responsibility.** Before trading, copy `knowledge/sources.example.json` to `knowledge/sources.json` and fill it with sources *you* trust (macro calendars, on-chain dashboards, methodology notes, personal risk principles, …). Choosing reliable sources is on you. The real file is **gitignored**; only the example template is committed.
+- **The assistant consults it first.** The server instructions and the analysis/proposal tool descriptions tell the agent to call `get_knowledge_base` and ground its reasoning in your validated sources before proposing anything.
+- **The assistant may propose, but never adds on its own.** It can suggest a new source, but `add_knowledge_source` only writes to the file when you supply the exact phrase `confirmationText: CONFIRM_ADD_SOURCE`. You stay in control of your information sources. Every addition is recorded in the audit log.
+- **Removing a source** is a manual edit of `knowledge/sources.json` (delete its entry). Park a source without deleting it by setting `"enabled": false`.
+
+Each source entry: `id`, `title`, `type` (`url` | `dataset` | `principle` | `document`), `url` (for `url`/`dataset`), `category`, `trust` (`high` | `medium` | `low`), `notes`, `enabled`, `addedBy`, `addedAt`. The schema is documented in `knowledge/sources.example.json`. The file location is configurable via `KNOWLEDGE_SOURCES_PATH`.
+
+> [!NOTE]
+> Curating sources does not make mechanical output financial advice, and the assistant can still misread a source. The sources improve grounding; they do not transfer responsibility (see the [Disclaimer](#disclaimer)).
 
 ## Paper trading
 

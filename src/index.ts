@@ -5,6 +5,7 @@ import { startHttpTransport } from "./server/httpTransport.js";
 import { startStdioTransport } from "./server/stdioTransport.js";
 import { AllocationService } from "./services/allocationService.js";
 import { AuditService } from "./services/auditService.js";
+import { KnowledgeService } from "./services/knowledgeService.js";
 import { OrderExecutionService } from "./services/orderExecutionService.js";
 import { OrderProposalService } from "./services/orderProposalService.js";
 import { PaperBrokerService } from "./services/paperBrokerService.js";
@@ -28,6 +29,7 @@ async function main(): Promise<void> {
     const riskLimitService = new RiskLimitService(auditService, env);
     const paperBrokerService = new PaperBrokerService(database, auditService, pricingService, portfolioService, env);
     const orderExecutionService = new OrderExecutionService(coinbaseClient, auditService, env, riskLimitService, paperBrokerService);
+    const knowledgeService = new KnowledgeService(env, auditService);
 
     const server = createMcpServer({
         env,
@@ -37,7 +39,8 @@ async function main(): Promise<void> {
         allocationService,
         orderProposalService,
         orderExecutionService,
-        paperBrokerService
+        paperBrokerService,
+        knowledgeService
     });
 
     process.on("SIGINT", () => {

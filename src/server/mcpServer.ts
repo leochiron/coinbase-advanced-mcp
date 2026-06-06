@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ToolContext } from "../tools/toolTypes.js";
+import { registerAddKnowledgeSource } from "../tools/addKnowledgeSource.js";
 import { registerAnalyzePortfolioAllocation } from "../tools/analyzePortfolioAllocation.js";
 import { registerCancelValidatedOrder } from "../tools/cancelValidatedOrder.js";
 import { registerCreateOrderDryRun } from "../tools/createOrderDryRun.js";
@@ -9,6 +10,7 @@ import { registerGetCoinbaseAccounts } from "../tools/getCoinbaseAccounts.js";
 import { registerGetCoinbaseProducts } from "../tools/getCoinbaseProducts.js";
 import { registerGetOrderHistory } from "../tools/getOrderHistory.js";
 import { registerGetPortfolioSnapshot } from "../tools/getPortfolioSnapshot.js";
+import { registerGetKnowledgeBase } from "../tools/getKnowledgeBase.js";
 import { registerGetPaperPortfolio } from "../tools/getPaperPortfolio.js";
 import { registerGetProductTicker } from "../tools/getProductTicker.js";
 import { registerGetServerStatus } from "../tools/getServerStatus.js";
@@ -26,7 +28,7 @@ export function createMcpServer(context: ToolContext): McpServer {
         },
         {
             instructions:
-                "Use this local Coinbase MCP for portfolio data, market prices, mechanical allocation analysis, dry-runs, and explicitly confirmed order execution only. Never treat mechanical output as financial advice."
+                "Use this local Coinbase MCP for portfolio data, market prices, mechanical allocation analysis, dry-runs, and explicitly confirmed order execution only. Never treat mechanical output as financial advice. Before analyzing the portfolio or proposing any orders, call get_knowledge_base and ground your reasoning in the operator's validated sources. You may propose adding a source, but never call add_knowledge_source without the user's explicit confirmation (CONFIRM_ADD_SOURCE)."
         }
     );
 
@@ -47,6 +49,8 @@ export function createMcpServer(context: ToolContext): McpServer {
     registerGetPaperPortfolio(server, context);
     registerProcessPaperOrders(server, context);
     registerResetPaperPortfolio(server, context);
+    registerGetKnowledgeBase(server, context);
+    registerAddKnowledgeSource(server, context);
 
     return server;
 }

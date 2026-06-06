@@ -149,7 +149,28 @@ Before any live order, suggest a no-risk rehearsal:
 
 When done rehearsing, set `PAPER_TRADING_ENABLED=false` and restart.
 
-## Step 7 — Going live (only when the user explicitly asks)
+## Step 7 — Curate the knowledge sources
+
+Before relying on the assistant for analysis or order ideas, set up the operator's **validated
+sources** (see README → "Knowledge base"). Choosing reliable sources is the user's responsibility.
+
+1. Copy the template:
+   - bash: `cp knowledge/sources.example.json knowledge/sources.json`
+   - PowerShell: `Copy-Item knowledge\sources.example.json knowledge\sources.json`
+2. Have the user fill `knowledge/sources.json` with sources **they** trust (macro calendars,
+   on-chain dashboards, methodology notes, personal risk principles…), setting `"enabled": true`
+   on each one they want active. The schema is documented in the example file's `_readme`.
+3. Verify: `get_server_status` shows `knowledgeBaseAvailable: true` and a non-zero
+   `knowledgeSourceCount`; `get_knowledge_base` lists the enabled sources.
+4. From now on, call `get_knowledge_base` **before** analysis or order proposals and ground your
+   reasoning in those sources.
+
+**Golden rule:** you may *suggest* adding a source, but never call `add_knowledge_source` on your
+own initiative. Describe the proposed source, then wait for the user to confirm with the exact
+phrase `CONFIRM_ADD_SOURCE`. The user owns their source list; removing a source is a manual edit of
+`knowledge/sources.json`.
+
+## Step 8 — Going live (only when the user explicitly asks)
 
 Explain the safety model before flipping anything:
 
@@ -167,7 +188,7 @@ To return to read-only: `COINBASE_TRADING_ENABLED=false` and restart.
 
 ---
 
-## Step 8 — Optional/advanced: deploy the remote PHP guard
+## Step 9 — Optional/advanced: deploy the remote PHP guard
 
 `server/coinbase-guard/` is a small, **separate** PHP/cron program for users who want a lightweight
 remote watchdog that runs even when their computer is off. It only manages **explicitly listed**

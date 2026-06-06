@@ -7,7 +7,7 @@ export function registerCreateOrderDryRun(server: McpServer, context: ToolContex
     server.registerTool(
         "create_order_dry_run",
         {
-            description: "Build and persist a complete Coinbase order payload without execution.",
+            description: "Build and persist a complete Coinbase order payload without execution. Consult get_knowledge_base first.",
             inputSchema: orderInputSchema
         },
         async (input) => safeTool(() => context.orderProposalService.createDryRun(input))

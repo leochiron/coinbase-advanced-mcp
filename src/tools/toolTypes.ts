@@ -1,6 +1,7 @@
 import type { AppEnv } from "../config/env.js";
 import type { AllocationService } from "../services/allocationService.js";
 import type { AuditService } from "../services/auditService.js";
+import type { KnowledgeService } from "../services/knowledgeService.js";
 import type { OrderExecutionService } from "../services/orderExecutionService.js";
 import type { OrderProposalService } from "../services/orderProposalService.js";
 import type { PaperBrokerService } from "../services/paperBrokerService.js";
@@ -16,6 +17,7 @@ export type ToolContext = {
     orderProposalService: OrderProposalService;
     orderExecutionService: OrderExecutionService;
     paperBrokerService: PaperBrokerService;
+    knowledgeService: KnowledgeService;
 };
 
 export function toolResult(output: unknown) {

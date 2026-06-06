@@ -21,6 +21,7 @@ const envSchema = z.object({
     COINBASE_TRADING_ENABLED: booleanFromString,
     DEFAULT_QUOTE_CURRENCY: z.string().min(2).default("EUR"),
     AUDIT_DATABASE_PATH: z.string().min(1).default("./data/audit.sqlite"),
+    KNOWLEDGE_SOURCES_PATH: z.string().min(1).default("./knowledge/sources.json"),
     MCP_TRANSPORT: z.enum(["stdio", "http"]).default("stdio"),
     MCP_HTTP_PORT: z.coerce.number().int().positive().default(3333),
     LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
@@ -41,6 +42,9 @@ export function loadEnv() {
         parsed.AUDIT_DATABASE_PATH === ":memory:" || isAbsolute(parsed.AUDIT_DATABASE_PATH)
             ? parsed.AUDIT_DATABASE_PATH
             : resolve(projectRoot, parsed.AUDIT_DATABASE_PATH);
+    const knowledgeSourcesPath = isAbsolute(parsed.KNOWLEDGE_SOURCES_PATH)
+        ? parsed.KNOWLEDGE_SOURCES_PATH
+        : resolve(projectRoot, parsed.KNOWLEDGE_SOURCES_PATH);
 
     return {
         projectRoot,
@@ -51,6 +55,7 @@ export function loadEnv() {
         tradingEnabled: parsed.COINBASE_TRADING_ENABLED,
         defaultQuoteCurrency: parsed.DEFAULT_QUOTE_CURRENCY.toUpperCase(),
         auditDatabasePath,
+        knowledgeSourcesPath,
         mcpTransport: parsed.MCP_TRANSPORT,
         mcpHttpPort: parsed.MCP_HTTP_PORT,
         logLevel: parsed.LOG_LEVEL,

@@ -8,7 +8,7 @@ export function registerProposeStopLimitOrders(server: McpServer, context: ToolC
     server.registerTool(
         "propose_stop_limit_orders",
         {
-            description: "Prepare stop-limit orders without sending them and persist the proposal locally.",
+            description: "Prepare stop-limit orders without sending them and persist the proposal locally. Consult get_knowledge_base first.",
             inputSchema: z.object({ ordersIntent: z.array(stopLimitOrderIntentSchema).min(1) }).strict()
         },
         async ({ ordersIntent }) => safeTool(() => context.orderProposalService.proposeStopLimitOrders(ordersIntent))

@@ -11,15 +11,20 @@ export function registerGetServerStatus(server: McpServer, context: ToolContext)
             inputSchema: z.object({}).strict()
         },
         async () =>
-            safeTool(() => ({
-                serverStarted: true,
-                transport: context.env.mcpTransport,
-                coinbaseConfigured: context.env.coinbaseConfigured,
-                tradingEnabled: context.env.tradingEnabled,
-                paperTradingEnabled: context.env.paperTradingEnabled,
-                riskLimitsEnabled: context.env.riskLimitsEnabled,
-                auditDatabaseAvailable: context.auditService.isAvailable(),
-                auditDatabasePath: context.env.auditDatabasePath
-            }))
+            safeTool(() => {
+                const knowledge = context.knowledgeService.getKnowledgeBase();
+                return {
+                    serverStarted: true,
+                    transport: context.env.mcpTransport,
+                    coinbaseConfigured: context.env.coinbaseConfigured,
+                    tradingEnabled: context.env.tradingEnabled,
+                    paperTradingEnabled: context.env.paperTradingEnabled,
+                    riskLimitsEnabled: context.env.riskLimitsEnabled,
+                    knowledgeBaseAvailable: knowledge.available,
+                    knowledgeSourceCount: knowledge.enabledCount,
+                    auditDatabaseAvailable: context.auditService.isAvailable(),
+                    auditDatabasePath: context.env.auditDatabasePath
+                };
+            })
     );
 }

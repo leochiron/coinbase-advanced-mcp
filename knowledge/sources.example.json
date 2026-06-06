@@ -1,0 +1,41 @@
+{
+    "_readme": "Copy this file to knowledge/sources.json (gitignored) and curate YOUR OWN reliable sources before trading. You are responsible for choosing trustworthy sources. The assistant consults get_knowledge_base before analysis/order proposals, and may PROPOSE additions but only writes them after you confirm with CONFIRM_ADD_SOURCE. Each source: id (slug), title, type (url|dataset|principle|document), url (for url/dataset), category (e.g. macro|on-chain|methodology|risk|news), trust (high|medium|low), notes (free text), enabled (true to surface it), addedBy (user|assistant), addedAt (ISO date). Remove a source by deleting its entry from the file. Set enabled to true once you trust it.",
+    "version": 1,
+    "sources": [
+        {
+            "id": "example-macro-calendar",
+            "title": "Example — economic calendar (REPLACE ME)",
+            "type": "url",
+            "url": "https://example.com/economic-calendar",
+            "category": "macro",
+            "trust": "high",
+            "notes": "Placeholder. Replace with a calendar/source you actually trust for macro events.",
+            "enabled": false,
+            "addedBy": "user",
+            "addedAt": "2026-01-01T00:00:00.000Z"
+        },
+        {
+            "id": "example-onchain-dashboard",
+            "title": "Example — on-chain dashboard (REPLACE ME)",
+            "type": "dataset",
+            "url": "https://example.com/onchain",
+            "category": "on-chain",
+            "trust": "medium",
+            "notes": "Placeholder for on-chain metrics you rely on (flows, active addresses, etc.).",
+            "enabled": false,
+            "addedBy": "user",
+            "addedAt": "2026-01-01T00:00:00.000Z"
+        },
+        {
+            "id": "example-risk-principle",
+            "title": "Example — personal risk principle (REPLACE ME)",
+            "type": "principle",
+            "category": "risk",
+            "trust": "high",
+            "notes": "Placeholder for a rule you want respected, e.g. 'Prefer protection over prediction; never exceed X% of the portfolio in one asset.'",
+            "enabled": false,
+            "addedBy": "user",
+            "addedAt": "2026-01-01T00:00:00.000Z"
+        }
+    ]
+}
