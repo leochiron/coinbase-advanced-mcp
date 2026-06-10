@@ -21,3 +21,6 @@ server/**/config.local.php
 server/**/state/
 *.log
 npm-debug.log*
+
+# Local Claude Code settings
+.claude/
