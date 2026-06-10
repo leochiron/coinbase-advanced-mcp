@@ -98,7 +98,7 @@ export class OrderExecutionService {
                 status: order.status,
                 createdTime: order.created_time,
                 filledSize: order.filled_size,
-                remainingSize: order.outstanding_hold_amount
+                outstandingHoldAmount: order.outstanding_hold_amount
             }))
         };
     }
