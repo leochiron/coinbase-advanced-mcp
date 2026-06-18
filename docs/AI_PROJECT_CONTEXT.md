@@ -391,6 +391,13 @@ Le projet a ete teste avec une logique de trading prudente et humaine :
 - classer certains petits tickets comme purement speculatifs ;
 - accepter que certains tickets soient stoppes rapidement.
 
+Preference operateur ajoutee le 2026-06-16 :
+
+- pour les prises de benefices, reductions d'exposition et sorties de positions crypto, privilegier les paires crypto/stablecoin quand elles existent et sont tradables sur Coinbase ;
+- utiliser USDC comme stablecoin de reference par defaut, avec USDT ou equivalent seulement si c'est pertinent, tradable et explicitement acceptable ;
+- eviter de proposer des ventes crypto vers EUR par defaut, sauf demande explicite de l'operateur ou absence de route stablecoin correcte ;
+- cette preference est une contrainte d'execution personnelle de l'operateur et ne constitue pas un conseil fiscal.
+
 Cette partie est importante pour un cours : le projet ne promet pas de gagner. Il montre plutot comment une IA peut structurer, suivre, documenter et securiser un processus de decision.
 
 Exemple reel de lecon technique :
