@@ -1,7 +1,8 @@
 {
     "name": "coinbase-local-mcp",
-    "version": "0.1.0",
-    "description": "Local MCP server for Coinbase Advanced Trade portfolio, pricing, order dry-runs, and validated execution.",
+    "version": "2.0.0",
+    "description": "Hybrid Coinbase Advanced MCP execution runtime and auditable Python crypto research engine.",
+    "license": "PolyForm-Strict-1.0.0",
     "type": "module",
     "private": true,
     "scripts": {
@@ -14,8 +15,8 @@
         "format:check": "prettier --check ."
     },
     "dependencies": {
-        "@coinbase/cdp-sdk": "^1.35.0",
-        "@modelcontextprotocol/sdk": "^1.12.1",
+        "@coinbase/cdp-sdk": "^1.55.0",
+        "@modelcontextprotocol/sdk": "^1.30.0",
         "better-sqlite3": "^12.10.0",
         "dotenv": "^16.5.0",
         "zod": "^3.25.0"
@@ -29,9 +30,12 @@
         "tsx": "^4.19.4",
         "typescript": "^5.8.3",
         "typescript-eslint": "^8.32.1",
-        "vitest": "^3.1.4"
+        "vitest": "^3.2.7"
+    },
+    "overrides": {
+        "axios": "1.19.0"
     },
     "engines": {
-        "node": ">=20.17.0"
+        "node": ">=20.19.0"
     }
 }

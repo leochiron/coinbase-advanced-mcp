@@ -24,7 +24,7 @@ export function createMcpServer(context: ToolContext): McpServer {
     const server = new McpServer(
         {
             name: "coinbase-local-mcp",
-            version: "0.1.0"
+            version: "2.0.0"
         },
         {
             instructions:

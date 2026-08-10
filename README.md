@@ -1,10 +1,14 @@
-# Coinbase Advanced MCP
+# Coinbase Advanced MCP v2
 
-> A **local-first**, safety-oriented [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server for **Coinbase Advanced Trade** — let an AI agent read your portfolio, analyze allocation, and prepare or execute orders behind a strict, human-confirmed safety model.
+> A **local-first**, safety-oriented crypto system combining a TypeScript
+> [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server for
+> **Coinbase Advanced Trade** with an auditable Python research, backtesting,
+> regime, risk, and decision engine.
 
 ![status](https://img.shields.io/badge/status-experimental-orange)
 ![node](https://img.shields.io/badge/node-%E2%89%A520.17-339933?logo=node.js&logoColor=white)
 ![language](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
+![research](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)
 ![transport](https://img.shields.io/badge/MCP-stdio-blue)
 
 > [!WARNING]
@@ -17,13 +21,23 @@
 
 ## What it is
 
-`coinbase-advanced-mcp` is a small Node.js + TypeScript server that exposes Coinbase Advanced Trade as a set of MCP tools. Any MCP-compatible client (Codex, Claude, etc.) can then, in natural language:
+`coinbase-advanced-mcp` v2 keeps the Node.js + TypeScript server that exposes
+Coinbase Advanced Trade as MCP tools and adds a separate Python research
+subsystem. Any MCP-compatible client (Codex, Claude, etc.) can then, in natural
+language:
 
 - read accounts, balances, products, and live prices;
 - take a portfolio snapshot and run a **mechanical** allocation/drift analysis;
 - **prepare** limit / stop-limit / bracket orders as proposals or dry-runs (no network send);
 - **execute** or **cancel** live orders — but only behind a triple-lock confirmation model;
 - keep a complete **local SQLite audit trail** of everything it did.
+- retrieve and validate public BTC, ETH, and SOL OHLCV across four timeframes;
+- classify trend, momentum, volatility, and structure regimes;
+- backtest six explicit strategy families with costs and chronological splits;
+- reject weak strategies through sensitivity, walk-forward, Monte Carlo, and
+  cross-asset gates;
+- generate traceable `LONG` or `NO TRADE` research proposals with stop-risk
+  sizing and EUR portfolio limits.
 
 The v1 transport is `stdio` (the client launches the process and talks JSON-RPC over stdin/stdout). HTTP / Streamable HTTP is an intentionally inactive placeholder until the stdio version is fully validated.
 
@@ -31,17 +45,20 @@ It **does not** implement withdrawals, transfers, sends, payouts, or any equival
 
 ## Why this exists — the philosophy
 
-Letting an AI agent touch a real trading account is genuinely risky. This project is built on the assumption that **the agent will eventually be wrong**, and that the software's job is to make a wrong call *cheap and reversible* rather than catastrophic. The design principles:
+Letting an AI agent touch a real trading account is genuinely risky. This project is built on the assumption that **the agent will eventually be wrong**, and that the software's job is to make a wrong call _cheap and reversible_ rather than catastrophic. The design principles:
 
 - **Read by default, act only on purpose.** Trading is off (`COINBASE_TRADING_ENABLED=false`) until you flip it. The vast majority of tools are read-only.
-- **Prepare ≠ send.** Proposals and dry-runs build real Coinbase payloads and store them, but never call the live API. You inspect exactly what *would* be sent before anything is sent.
-- **Protection over prediction.** The order model favours stop-limit and bracket protection, and a two-step watcher that only arms protection *after* Coinbase confirms a real fill.
+- **Prepare ≠ send.** Proposals and dry-runs build real Coinbase payloads and store them, but never call the live API. You inspect exactly what _would_ be sent before anything is sent.
+- **Protection over prediction.** The order model favours stop-limit and bracket protection, and a two-step watcher that only arms protection _after_ Coinbase confirms a real fill.
 - **No silent power.** Every live action requires an exact confirmation phrase and must reference a previously stored proposal or dry-run. An agent cannot conjure an order out of thin air.
-- **No exfiltration surface.** Withdrawals/transfers/sends are simply not implemented, so the worst-case blast radius is a bad *trade*, not a drained account.
+- **No exfiltration surface.** Withdrawals/transfers/sends are simply not implemented, so the worst-case blast radius is a bad _trade_, not a drained account.
 - **Auditability.** Every proposal, dry-run, execution, and cancellation is written to a local SQLite database, with secrets redacted.
-- **Mechanical, not advisory.** Allocation analysis is arithmetic on your balances. The server repeats, everywhere, that its output is *not* personalized financial advice.
+- **Mechanical, not advisory.** Allocation analysis is arithmetic on your balances. The server repeats, everywhere, that its output is _not_ personalized financial advice.
 
-In short: this is a **human-approved, AI-assisted** order workflow, not an autonomous trading bot.
+In short: v2 separates **decision intelligence** from **execution authority**.
+The research engine can reject or propose; only the existing audited TypeScript
+workflow can reach Coinbase. The current version remains human-approved and
+does not silently convert a research signal into an unattended live order.
 
 ## Safety model
 
@@ -54,7 +71,7 @@ Every live action passes three independent locks:
 Additional guarantees:
 
 - Order proposals and dry-runs **never** send anything to Coinbase.
-- No investment-size or risk-limit blocks are imposed beyond technical validation and confirmation — *you* own the risk decisions.
+- No investment-size or risk-limit blocks are imposed beyond technical validation and confirmation — _you_ own the risk decisions.
 - Secrets (API keys, private keys, Bearer tokens) are redacted before logging or storage.
 - Recommended Coinbase key scopes: `view` for read-only, `view` + `trade` for execution. **Never enable `transfer`.**
 
@@ -62,21 +79,22 @@ To return to read-only mode at any time, set `COINBASE_TRADING_ENABLED=false` an
 
 ## Tools
 
-| Category | Tool | Sends to Coinbase? |
-| --- | --- | --- |
-| Status | `get_server_status` | No |
-| Reads | `get_coinbase_accounts`, `get_coinbase_products`, `get_product_ticker` | Read |
-| Reads | `get_portfolio_snapshot`, `list_open_orders`, `get_order_history`, `get_audit_log` | Read |
-| Analysis | `analyze_portfolio_allocation` | Read |
-| Prepare | `propose_limit_orders`, `propose_stop_limit_orders`, `create_order_dry_run` | **No** |
-| Act (locked) | `execute_validated_order`, `cancel_validated_order` | **Live** |
-| Paper | `get_paper_portfolio`, `process_paper_orders`, `reset_paper_portfolio` | **No** |
-| Knowledge | `get_knowledge_base`, `add_knowledge_source` (confirmed) | **No** |
+| Category     | Tool                                                                               | Sends to Coinbase? |
+| ------------ | ---------------------------------------------------------------------------------- | ------------------ |
+| Status       | `get_server_status`                                                                | No                 |
+| Reads        | `get_coinbase_accounts`, `get_coinbase_products`, `get_product_ticker`             | Read               |
+| Reads        | `get_portfolio_snapshot`, `list_open_orders`, `get_order_history`, `get_audit_log` | Read               |
+| Analysis     | `analyze_portfolio_allocation`                                                     | Read               |
+| Prepare      | `propose_limit_orders`, `propose_stop_limit_orders`, `create_order_dry_run`        | **No**             |
+| Act (locked) | `execute_validated_order`, `cancel_validated_order`                                | **Live**           |
+| Paper        | `get_paper_portfolio`, `process_paper_orders`, `reset_paper_portfolio`             | **No**             |
+| Knowledge    | `get_knowledge_base`, `add_knowledge_source` (confirmed)                           | **No**             |
 
 ## Requirements
 
-- Node.js `>=20.17.0`
+- Node.js `>=20.19.0`
 - npm
+- Python `>=3.11` for the research subsystem
 - A Coinbase Advanced Trade CDP API key (from the [Coinbase Developer Platform](https://portal.cdp.coinbase.com/))
 
 ## Install
@@ -84,6 +102,14 @@ To return to read-only mode at any time, set `COINBASE_TRADING_ENABLED=false` an
 ```bash
 npm install
 cp .env.example .env
+```
+
+Install the Python research subsystem on Windows:
+
+```powershell
+python -m venv .venv
+.venv\Scripts\python -m pip install -r requirements.lock
+.venv\Scripts\python -m pip install -e . --no-deps
 ```
 
 Fill `.env`:
@@ -110,6 +136,22 @@ npm run build   # compile TypeScript to dist/
 npm test        # run the vitest suite
 npm run lint    # eslint
 ```
+
+Research commands:
+
+```powershell
+.venv\Scripts\python -m pytest
+.venv\Scripts\python -m crypto_research.cli fetch
+.venv\Scripts\python -m crypto_research.cli validate
+.venv\Scripts\python -m crypto_research.cli backtest
+.venv\Scripts\python -m crypto_research.cli analyze
+.venv\Scripts\python -m crypto_research.cli run-all
+.venv\Scripts\python -m crypto_research.cli paper show
+```
+
+The research provider uses public, unauthenticated GET endpoints and does not
+receive Coinbase credentials. Binance public data is the default, with Kraken
+public data as the full-run fallback.
 
 In stdio mode, **stdout is reserved for MCP JSON-RPC** — logs go to stderr only.
 
@@ -167,7 +209,7 @@ Cancel order Y. Confirmation: CONFIRM_CANCEL_ORDER.
 
 The assistant should not reason from diffuse, unvetted knowledge. This feature gives it a **precise, operator-curated set of trusted sources** to consult before any analysis or order proposal.
 
-- **You curate it, and it's your responsibility.** Before trading, copy `knowledge/sources.example.json` to `knowledge/sources.json` and fill it with sources *you* trust (macro calendars, on-chain dashboards, methodology notes, personal risk principles, …). Choosing reliable sources is on you. The real file is **gitignored**; only the example template is committed.
+- **You curate it, and it's your responsibility.** Before trading, copy `knowledge/sources.example.json` to `knowledge/sources.json` and fill it with sources _you_ trust (macro calendars, on-chain dashboards, methodology notes, personal risk principles, …). Choosing reliable sources is on you. The real file is **gitignored**; only the example template is committed.
 - **The assistant consults it first.** The server instructions and the analysis/proposal tool descriptions tell the agent to call `get_knowledge_base` and ground its reasoning in your validated sources before proposing anything.
 - **The assistant may propose, but never adds on its own.** It can suggest a new source, but `add_knowledge_source` only writes to the file when you supply the exact phrase `confirmationText: CONFIRM_ADD_SOURCE`. You stay in control of your information sources. Every addition is recorded in the audit log.
 - **Removing a source** is a manual edit of `knowledge/sources.json` (delete its entry). Park a source without deleting it by setting `"enabled": false`.
@@ -223,11 +265,36 @@ npm run watch:two-step -- --config scripts/two-step-watcher.config.example.json 
 
 See [`docs/TWO_STEP_WATCHER.md`](docs/TWO_STEP_WATCHER.md) before enabling any live parent or protection flags. A separate, lightweight PHP/cron guard for remote monitoring lives under [`server/coinbase-guard/`](server/coinbase-guard/).
 
+## V2 research and decision engine
+
+The Python subsystem is intentionally independent of Coinbase authentication
+and order transport. Its complete sequence is:
+
+1. fetch closed public candles and record source, retrieval time, and hashes;
+2. fail closed on missing, duplicated, stale, inconsistent, or impossible data;
+3. compute indicators and daily → 4h → 1h → 15m regimes;
+4. evaluate six deterministic long/flat strategy families;
+5. run 60/20/20 chronological tests, parameter sensitivity, adverse costs,
+   delayed entries, walk-forward windows, Monte Carlo, and asset robustness;
+6. permit a proposal only after every fixed acceptance and portfolio-risk gate;
+7. otherwise return an explicit `NO TRADE` decision with evidence and levels.
+
+The research result is not a Coinbase order and never mutates the TypeScript
+audit/execution database. Future automation must consume it through an explicit
+adapter that creates a normal TypeScript proposal and preserves all configured
+dry-run, risk, confirmation, audit, and emergency-stop controls.
+
+Start with the project skill at
+[`skills/crypto-trading-research/SKILL.md`](skills/crypto-trading-research/SKILL.md)
+and the integration contract at
+[`docs/V2_INTEGRATION.md`](docs/V2_INTEGRATION.md).
+
 ## Project structure
 
 ```
 src/
   coinbase/    Coinbase Advanced Trade client, JWT auth, types, errors
+  crypto_research/ Public-data research, indicators, regimes, backtests, risk
   config/      env loading & validation (zod)
   server/      MCP server wiring + stdio/http transports
   services/    portfolio, pricing, allocation, proposals, execution, audit
@@ -238,6 +305,10 @@ src/
 docs/          architecture context & watcher docs
 scripts/       two-step watcher + server guard helpers
 server/        optional PHP/cron guard (separate deployment)
+config/        fixed Python research universe, costs, gates, and risk policy
+skills/        reusable crypto research workflow and validation scripts
+tests/         Python research tests (TypeScript tests remain under src/tests)
+pyproject.toml Python package and CLI metadata
 ```
 
 Implementation notes: Coinbase order payloads use the Advanced Trade `/api/v3/brokerage` endpoints; JWT Bearer tokens are generated per request and signed over the API path only (not the query string); order sizes must respect each product's `base_increment` (sell sizes rounded **down**); staked balances (e.g. ETH/SOL) can appear in portfolio breakdowns but are not liquid spot inventory. Tests mock Coinbase and never call the live API.
@@ -256,5 +327,12 @@ If you do not accept these terms, do not enable trading and do not use this soft
 
 ## License
 
-Released under the [MIT License](LICENSE). The MIT terms include an explicit
-disclaimer of warranty and liability, which complements the [Disclaimer](#disclaimer) above.
+The current version is source-available under the
+[PolyForm Strict License 1.0.0](LICENSE). Running the unmodified software for
+personal study, home testing, research, experimentation, and other permitted
+noncommercial uses is allowed under its terms. Redistribution, modification,
+commercial use, or professional use requires a separate written license from
+Léo Chiron; see [commercial licensing](COMMERCIAL_LICENSE.md).
+
+Versions previously published under MIT remain governed by the license that
+accompanied those versions. Third-party dependencies retain their own licenses.
