@@ -11,6 +11,8 @@
         "test": "vitest run",
         "lint": "eslint .",
         "watch:two-step": "node scripts/two-step-watcher.mjs",
+        "research:once": "tsx src/research/runner.ts --once",
+        "research:daemon": "tsx src/research/runner.ts",
         "format": "prettier --write .",
         "format:check": "prettier --check ."
     },

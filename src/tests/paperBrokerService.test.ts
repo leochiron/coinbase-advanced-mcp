@@ -45,6 +45,15 @@ function limitBuy(baseSize: string, limitPrice: string): CoinbaseOrderPayload {
     };
 }
 
+function protectedLimitBuy(baseSize: string, limitPrice: string, takeProfit: string, stopLoss: string): CoinbaseOrderPayload {
+    return {
+        ...limitBuy(baseSize, limitPrice),
+        attached_order_configuration: {
+            trigger_bracket_gtc: { limit_price: takeProfit, stop_trigger_price: stopLoss }
+        }
+    };
+}
+
 function stopSell(baseSize: string, stopPrice: string, limitPrice: string): CoinbaseOrderPayload {
     return {
         client_order_id: "codex-ss",
@@ -66,6 +75,13 @@ function createBroker() {
     const audit = new AuditService(db);
     const { pricingService, portfolioService } = createFakes();
     return new PaperBrokerService(db, audit, pricingService, portfolioService, paperEnv);
+}
+
+function createBrokerWithEnv(overrides: Partial<typeof paperEnv>) {
+    const db = createAuditDatabase(":memory:");
+    const audit = new AuditService(db);
+    const { pricingService, portfolioService } = createFakes();
+    return new PaperBrokerService(db, audit, pricingService, portfolioService, { ...paperEnv, ...overrides });
 }
 
 async function balanceOf(broker: PaperBrokerService, asset: string): Promise<number> {
@@ -146,5 +162,37 @@ describe("PaperBrokerService", () => {
         const cancelled = broker.cancelOrder(submitted.paperOrderId);
         expect(cancelled.status).toBe("CANCELLED");
         expect((await broker.processFills()).evaluated).toBe(0);
+    });
+
+    it("supports deterministic partial fills for resting orders", async () => {
+        const broker = createBrokerWithEnv({ paperPartialFillRatio: 0.5 });
+        await broker.submitOrder(limitBuy("1", "100"), "dryrun_partial");
+        marketPrice = 90;
+        const first = await broker.processFills();
+        expect(first.partiallyFilled).toBe(1);
+        expect(await balanceOf(broker, "BTC")).toBeCloseTo(0.5, 8);
+        const second = await broker.processFills();
+        expect(second.filled).toBe(1);
+        expect(await balanceOf(broker, "BTC")).toBeCloseTo(1, 8);
+    });
+
+    it("creates and fills attached paper protection after an entry fill", async () => {
+        const broker = createBroker();
+        await broker.submitOrder(protectedLimitBuy("1", "100", "110", "90"), "dryrun_protected");
+        marketPrice = 95;
+        expect((await broker.processFills()).filled).toBe(1);
+        expect((await broker.getPortfolio("EUR")).openOrders.some((order) => order.orderType === "BRACKET")).toBe(true);
+        marketPrice = 111;
+        expect((await broker.processFills()).filled).toBe(1);
+        expect(await balanceOf(broker, "BTC")).toBeCloseTo(0, 8);
+        const performance = await broker.getPerformanceReport("EUR");
+        expect(performance.realizedPnl).toBeGreaterThan(0);
+    });
+
+    it("charges adverse spread and slippage to market orders", async () => {
+        const broker = createBrokerWithEnv({ paperHalfSpreadBps: 2, paperSlippageBps: 3 });
+        const fill = await broker.submitOrder(marketBuy("1000"), "dryrun_costs", 100);
+        expect(fill.fillPrice).toBeCloseTo(100.05, 8);
+        expect(await balanceOf(broker, "BTC")).toBeLessThan(10);
     });
 });

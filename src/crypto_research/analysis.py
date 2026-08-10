@@ -11,6 +11,7 @@ from .config import Settings
 from .indicators import add_indicators
 from .io_utils import atomic_write_json, atomic_write_text, iso_utc
 from .market_data import read_ohlcv_cache
+from .proposal_contract import write_research_decision
 from .regime import classify_regime
 from .risk import calculate_position_size
 from .strategies import strategy_by_name
@@ -151,6 +152,7 @@ def _make_proposal(
         ],
         "sizing_allowed": size.allowed,
         "sizing_reasons": size.reasons,
+        "signal_candle": match["signal_candle"],
         "mode": "PAPER_ANALYSIS_ONLY",
     }
 
@@ -275,6 +277,7 @@ def analyze_current_market(settings: Settings, exchange_slug: str = "binance-spo
         },
     }
     atomic_write_json(settings.reports_dir / "current_market_analysis.json", report)
+    write_research_decision(report, settings.reports_dir / "research_decision.v1.json")
     atomic_write_text(settings.reports_dir / "MARKET_ANALYSIS.md", render_market_report(report))
     return report
 

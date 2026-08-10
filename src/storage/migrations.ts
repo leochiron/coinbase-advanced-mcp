@@ -71,5 +71,65 @@ export function runMigrations(db: Database.Database): void {
             reason TEXT,
             source_id TEXT
         );
+
+        CREATE TABLE IF NOT EXISTS paper_positions (
+            position_id TEXT PRIMARY KEY,
+            product_id TEXT NOT NULL,
+            quantity TEXT NOT NULL,
+            average_entry_price TEXT NOT NULL,
+            realized_pnl TEXT NOT NULL DEFAULT '0',
+            entry_fees TEXT NOT NULL DEFAULT '0',
+            exit_fees TEXT NOT NULL DEFAULT '0',
+            status TEXT NOT NULL,
+            opened_at TEXT NOT NULL,
+            closed_at TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS paper_realized_events (
+            event_id TEXT PRIMARY KEY,
+            position_id TEXT NOT NULL,
+            product_id TEXT NOT NULL,
+            realized_pnl TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS research_decision_imports (
+            artifact_id TEXT PRIMARY KEY,
+            dedupe_key TEXT NOT NULL UNIQUE,
+            decision TEXT NOT NULL,
+            status TEXT NOT NULL,
+            dry_run_id TEXT,
+            payload_json TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS research_automation_runs (
+            run_id TEXT PRIMARY KEY,
+            schedule_bucket TEXT NOT NULL UNIQUE,
+            status TEXT NOT NULL,
+            decision_artifact_id TEXT,
+            details_json TEXT,
+            started_at TEXT NOT NULL,
+            finished_at TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS automation_state (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
     `);
+
+    ensureColumn(db, "paper_orders", "take_profit_price", "TEXT");
+    ensureColumn(db, "paper_orders", "stop_loss_price", "TEXT");
+    ensureColumn(db, "paper_orders", "parent_paper_order_id", "TEXT");
+    ensureColumn(db, "paper_orders", "remaining_size", "TEXT");
+    ensureColumn(db, "research_decision_imports", "proposal_id", "TEXT");
+}
+
+function ensureColumn(db: Database.Database, table: string, column: string, type: string): void {
+    const columns = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+    if (!columns.some((item) => item.name === column)) {
+        db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
+    }
 }

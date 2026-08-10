@@ -6,7 +6,7 @@
 > regime, risk, and decision engine.
 
 ![status](https://img.shields.io/badge/status-experimental-orange)
-![node](https://img.shields.io/badge/node-%E2%89%A520.17-339933?logo=node.js&logoColor=white)
+![node](https://img.shields.io/badge/node-%E2%89%A520.19-339933?logo=node.js&logoColor=white)
 ![language](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
 ![research](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)
 ![transport](https://img.shields.io/badge/MCP-stdio-blue)
@@ -288,6 +288,14 @@ Start with the project skill at
 [`skills/crypto-trading-research/SKILL.md`](skills/crypto-trading-research/SKILL.md)
 and the integration contract at
 [`docs/V2_INTEGRATION.md`](docs/V2_INTEGRATION.md).
+
+The first integrated automation milestone is documented in
+[`docs/RESEARCH_AUTOMATION.md`](docs/RESEARCH_AUTOMATION.md). It adds a strict
+Python-to-TypeScript proposal bridge, continuous closed-candle scheduling,
+circuit breakers, and automatic **paper-only** execution. Compatibility and
+rollback requirements are recorded in
+[`docs/COMPATIBILITY_MATRIX.md`](docs/COMPATIBILITY_MATRIX.md) and
+[`docs/RELEASE_STRATEGY.md`](docs/RELEASE_STRATEGY.md).
 
 ## Project structure
 

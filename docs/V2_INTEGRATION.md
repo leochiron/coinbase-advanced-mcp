@@ -22,12 +22,19 @@ different authority.
 
 ## Current integration state
 
-The two runtimes coexist in one repository and do not call each other. The
-Python CLI produces JSON/Markdown research artifacts and maintains a separate
-EUR paper ledger. The TypeScript MCP preserves all v1 capabilities and safety
-locks. This avoids creating an undocumented automatic path to live funds.
+The Python CLI emits a strict `research_decision.v1.json` artifact after a
+validated current-market analysis. A TypeScript bridge checks its schema,
+freshness, closed-candle provenance, eligibility, sizing, and deduplication key,
+then stores both a legacy proposal and an identical dry-run. In `PAPER` mode, a
+separate automation service may route that stored payload only to the local
+paper broker. It does not import or call the live execution service.
 
-## Required contract for a future automation adapter
+The original Python paper ledger remains independently testable. Automated v2
+integration state belongs to the TypeScript audit database so every imported
+artifact, simulated order, fill, and protection is traceable without mutating
+the Python research history.
+
+## Enforced automation-adapter contract
 
 A future adapter may read a versioned Python proposal artifact, but it must not
 call Coinbase directly. It must translate the evidence into the existing
@@ -43,9 +50,10 @@ order:
 7. expose a default-off automation switch and a local emergency stop;
 8. never add withdrawal, transfer, send, payout, or wallet-export capability.
 
-Unattended live execution is not implemented by the Python subsystem or by
-this integration commit. It requires its own design review, threat model,
-failure-mode tests, explicit operator opt-in, and deployment documentation.
+Unattended live execution is not implemented by the Python subsystem, bridge,
+scheduler, or paper automation. It requires its own later design review, threat
+model, failure-mode tests, explicit operator opt-in, and deployment
+documentation.
 
 ## Test boundaries
 

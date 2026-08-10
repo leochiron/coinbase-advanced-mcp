@@ -15,10 +15,12 @@ separated at the execution boundary:
 
 The Python subsystem is permanently analysis/paper-only and must never load
 Coinbase credentials or call an order endpoint. A Python proposal is evidence
-for the TypeScript workflow, not authorization to trade. Any bridge from a
-research proposal to Coinbase must enter through the TypeScript proposal,
-dry-run, risk-limit, confirmation, audit, and execution services. Do not bypass
-those controls or silently enable unattended live execution.
+for the TypeScript workflow, not authorization to trade. The v1 research bridge
+may create a TypeScript proposal and dry-run, and the dedicated automation
+service may submit it only to `PaperBrokerService`. Any future bridge from a
+research proposal to Coinbase must still enter through the TypeScript
+risk-limit, confirmation, audit, and execution services. Do not bypass those
+controls or silently enable unattended live execution.
 
 For research work, treat `skills/crypto-trading-research/SKILL.md` as the
 canonical workflow. Validate market data before analysis, preserve negative
