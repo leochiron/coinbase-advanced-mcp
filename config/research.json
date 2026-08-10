@@ -1,0 +1,35 @@
+{
+    "mode": "PAPER_ANALYSIS_ONLY",
+    "provider": "binance",
+    "universe": ["BTC/USDT", "ETH/USDT", "SOL/USDT"],
+    "timeframes": ["15m", "1h", "4h", "1d"],
+    "bars_by_timeframe": {
+        "15m": 3000,
+        "1h": 5000,
+        "4h": 4000,
+        "1d": 2000
+    },
+    "initial_capital_eur": 1000.0,
+    "costs": {
+        "base": { "fee_bps": 10.0, "half_spread_bps": 1.0, "slippage_bps": 3.0 },
+        "high": { "fee_bps": 15.0, "half_spread_bps": 2.0, "slippage_bps": 8.0 },
+        "severe": { "fee_bps": 25.0, "half_spread_bps": 4.0, "slippage_bps": 15.0 }
+    },
+    "risk": {
+        "risk_per_trade": 0.01,
+        "max_total_exposure": 0.5,
+        "max_asset_exposure": 0.25,
+        "max_positions": 3,
+        "max_leverage": 1.0,
+        "max_drawdown": 0.1
+    },
+    "acceptance_gate": {
+        "minimum_oos_expectancy_eur": 0.0,
+        "minimum_oos_profit_factor": 1.05,
+        "minimum_oos_trades": 8,
+        "maximum_oos_drawdown": 0.1,
+        "minimum_parameter_pass_ratio": 0.6,
+        "minimum_walk_forward_pass_ratio": 0.5,
+        "minimum_high_cost_profit_factor": 1.0
+    }
+}

@@ -1,0 +1,4 @@
+interface:
+    display_name: "Crypto Trading Research"
+    short_description: "Auditable crypto research and paper decisions"
+    default_prompt: "Use $crypto-trading-research to run the validated market-research and paper-decision workflow."

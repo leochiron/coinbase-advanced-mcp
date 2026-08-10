@@ -16,6 +16,17 @@ export type StoredDryRun = {
     createdAt: string;
 };
 
+export type StoredResearchImport = {
+    artifactId: string;
+    dedupeKey: string;
+    decision: "LONG" | "NO_TRADE";
+    status: string;
+    proposalId?: string;
+    dryRunId?: string;
+    payload: unknown;
+    createdAt: string;
+};
+
 export class AuditService {
     constructor(private readonly db: Database.Database) {}
 
@@ -107,6 +118,104 @@ export class AuditService {
             payload: JSON.parse(row.payload_json) as CoinbaseOrderPayload,
             createdAt: row.created_at
         };
+    }
+
+    getResearchImportByDedupeKey(dedupeKey: string): StoredResearchImport | undefined {
+        const row = this.db
+            .prepare(
+                "SELECT artifact_id, dedupe_key, decision, status, proposal_id, dry_run_id, payload_json, created_at FROM research_decision_imports WHERE dedupe_key = ?"
+            )
+            .get(dedupeKey) as
+            | {
+                  artifact_id: string;
+                  dedupe_key: string;
+                  decision: "LONG" | "NO_TRADE";
+                  status: string;
+                  proposal_id: string | null;
+                  dry_run_id: string | null;
+                  payload_json: string;
+                  created_at: string;
+              }
+            | undefined;
+        if (!row) {
+            return undefined;
+        }
+        return {
+            artifactId: row.artifact_id,
+            dedupeKey: row.dedupe_key,
+            decision: row.decision,
+            status: row.status,
+            proposalId: row.proposal_id ?? undefined,
+            dryRunId: row.dry_run_id ?? undefined,
+            payload: parseJson(row.payload_json),
+            createdAt: row.created_at
+        };
+    }
+
+    saveResearchImport(input: {
+        artifactId: string;
+        dedupeKey: string;
+        decision: "LONG" | "NO_TRADE";
+        status: string;
+        proposalId?: string;
+        dryRunId?: string;
+        payload: unknown;
+    }): StoredResearchImport {
+        const createdAt = new Date().toISOString();
+        this.db
+            .prepare(
+                "INSERT INTO research_decision_imports (artifact_id, dedupe_key, decision, status, proposal_id, dry_run_id, payload_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+            )
+            .run(
+                input.artifactId,
+                input.dedupeKey,
+                input.decision,
+                input.status,
+                input.proposalId ?? null,
+                input.dryRunId ?? null,
+                JSON.stringify(redactSecrets(input.payload)),
+                createdAt
+            );
+        this.append("research_decision_import", input.status, {
+            artifactId: input.artifactId,
+            dedupeKey: input.dedupeKey,
+            decision: input.decision,
+            proposalId: input.proposalId,
+            dryRunId: input.dryRunId
+        });
+        return { ...input, createdAt };
+    }
+
+    setAutomationState(key: string, value: string): void {
+        this.db
+            .prepare(
+                "INSERT INTO automation_state (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at"
+            )
+            .run(key, value, new Date().toISOString());
+    }
+
+    getAutomationState(key: string): string | undefined {
+        const row = this.db.prepare("SELECT value FROM automation_state WHERE key = ?").get(key) as { value: string } | undefined;
+        return row?.value;
+    }
+
+    countPaperOrdersSince(isoDate: string): number {
+        const row = this.db.prepare("SELECT COUNT(*) AS count FROM paper_orders WHERE created_at >= ?").get(isoDate) as { count: number };
+        return row.count;
+    }
+
+    countOpenPaperOrders(): number {
+        const row = this.db
+            .prepare("SELECT COUNT(*) AS count FROM paper_orders WHERE status IN ('OPEN', 'PARTIALLY_FILLED')")
+            .get() as { count: number };
+        return row.count;
+    }
+
+    realizedPaperPnlSince(isoDate: string): number {
+        const row = this.db
+            .prepare("SELECT COALESCE(SUM(CAST(realized_pnl AS REAL)), 0) AS pnl FROM paper_realized_events WHERE created_at >= ?")
+            .get(isoDate) as { pnl: number };
+        return Number(row.pnl);
     }
 
     saveExecution(sourceId: string, payload: CoinbaseOrderPayload, response: unknown): string {

@@ -20,11 +20,35 @@ import { registerProposeLimitOrders } from "../tools/proposeLimitOrders.js";
 import { registerProposeStopLimitOrders } from "../tools/proposeStopLimitOrders.js";
 import { registerResetPaperPortfolio } from "../tools/resetPaperPortfolio.js";
 
+type ToolRegistration = (server: McpServer, context: ToolContext) => void;
+
+export const LEGACY_TOOL_REGISTRY: ReadonlyArray<{ name: string; register: ToolRegistration }> = [
+    { name: "get_server_status", register: registerGetServerStatus },
+    { name: "get_coinbase_accounts", register: registerGetCoinbaseAccounts },
+    { name: "get_coinbase_products", register: registerGetCoinbaseProducts },
+    { name: "get_product_ticker", register: registerGetProductTicker },
+    { name: "get_portfolio_snapshot", register: registerGetPortfolioSnapshot },
+    { name: "analyze_portfolio_allocation", register: registerAnalyzePortfolioAllocation },
+    { name: "propose_limit_orders", register: registerProposeLimitOrders },
+    { name: "propose_stop_limit_orders", register: registerProposeStopLimitOrders },
+    { name: "create_order_dry_run", register: registerCreateOrderDryRun },
+    { name: "execute_validated_order", register: registerExecuteValidatedOrder },
+    { name: "list_open_orders", register: registerListOpenOrders },
+    { name: "cancel_validated_order", register: registerCancelValidatedOrder },
+    { name: "get_order_history", register: registerGetOrderHistory },
+    { name: "get_audit_log", register: registerGetAuditLog },
+    { name: "get_paper_portfolio", register: registerGetPaperPortfolio },
+    { name: "process_paper_orders", register: registerProcessPaperOrders },
+    { name: "reset_paper_portfolio", register: registerResetPaperPortfolio },
+    { name: "get_knowledge_base", register: registerGetKnowledgeBase },
+    { name: "add_knowledge_source", register: registerAddKnowledgeSource }
+];
+
 export function createMcpServer(context: ToolContext): McpServer {
     const server = new McpServer(
         {
             name: "coinbase-local-mcp",
-            version: "0.1.0"
+            version: "2.0.0"
         },
         {
             instructions:
@@ -32,25 +56,9 @@ export function createMcpServer(context: ToolContext): McpServer {
         }
     );
 
-    registerGetServerStatus(server, context);
-    registerGetCoinbaseAccounts(server, context);
-    registerGetCoinbaseProducts(server, context);
-    registerGetProductTicker(server, context);
-    registerGetPortfolioSnapshot(server, context);
-    registerAnalyzePortfolioAllocation(server, context);
-    registerProposeLimitOrders(server, context);
-    registerProposeStopLimitOrders(server, context);
-    registerCreateOrderDryRun(server, context);
-    registerExecuteValidatedOrder(server, context);
-    registerListOpenOrders(server, context);
-    registerCancelValidatedOrder(server, context);
-    registerGetOrderHistory(server, context);
-    registerGetAuditLog(server, context);
-    registerGetPaperPortfolio(server, context);
-    registerProcessPaperOrders(server, context);
-    registerResetPaperPortfolio(server, context);
-    registerGetKnowledgeBase(server, context);
-    registerAddKnowledgeSource(server, context);
+    for (const item of LEGACY_TOOL_REGISTRY) {
+        item.register(server, context);
+    }
 
     return server;
 }

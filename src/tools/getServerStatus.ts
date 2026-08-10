@@ -1,5 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { existsSync } from "node:fs";
 import type { ToolContext } from "./toolTypes.js";
 import { safeTool } from "./toolTypes.js";
 
@@ -20,6 +21,8 @@ export function registerGetServerStatus(server: McpServer, context: ToolContext)
                     tradingEnabled: context.env.tradingEnabled,
                     paperTradingEnabled: context.env.paperTradingEnabled,
                     riskLimitsEnabled: context.env.riskLimitsEnabled,
+                    researchAutomationMode: context.env.researchAutomationMode,
+                    researchEmergencyStopActive: existsSync(context.env.researchEmergencyStopPath),
                     knowledgeBaseAvailable: knowledge.available,
                     knowledgeSourceCount: knowledge.enabledCount,
                     auditDatabaseAvailable: context.auditService.isAvailable(),

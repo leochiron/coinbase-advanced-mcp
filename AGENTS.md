@@ -1,5 +1,32 @@
 # Agent Operating Notes
 
+## V2 Hybrid Boundary
+
+This repository contains two complementary subsystems that must remain
+separated at the execution boundary:
+
+- The existing Node.js/TypeScript MCP owns Coinbase authentication, account
+  reads, proposals, dry-runs, paper orders, audited execution, cancellation,
+  and the two-step protection watcher. Preserve its existing confirmation and
+  provenance locks.
+- The Python `crypto_research` package owns public market-data retrieval,
+  validation, indicators, regime classification, strategy backtests,
+  robustness evaluation, risk sizing, and research decisions.
+
+The Python subsystem is permanently analysis/paper-only and must never load
+Coinbase credentials or call an order endpoint. A Python proposal is evidence
+for the TypeScript workflow, not authorization to trade. The v1 research bridge
+may create a TypeScript proposal and dry-run, and the dedicated automation
+service may submit it only to `PaperBrokerService`. Any future bridge from a
+research proposal to Coinbase must still enter through the TypeScript
+risk-limit, confirmation, audit, and execution services. Do not bypass those
+controls or silently enable unattended live execution.
+
+For research work, treat `skills/crypto-trading-research/SKILL.md` as the
+canonical workflow. Validate market data before analysis, preserve negative
+experiments, and run `python -m pytest` plus
+`python -m crypto_research.cli run-all` when current public data is required.
+
 This project is a local-first MCP server for Coinbase Advanced Trade. It is built for Codex or another local AI client over MCP `stdio`, with strict confirmation gates for any live Coinbase action.
 
 For onboarding a new user, follow [docs/AI_SETUP_GUIDE.md](docs/AI_SETUP_GUIDE.md). For fuller architecture and workflow context, read [docs/AI_PROJECT_CONTEXT.md](docs/AI_PROJECT_CONTEXT.md). Never read, print, summarize, or commit secrets.
@@ -84,9 +111,7 @@ Use an absolute compiled path when configuring Codex or another MCP client from 
     "mcpServers": {
         "coinbase-local": {
             "command": "node",
-            "args": [
-                "C:\\path\\to\\coinbase-advanced-mcp\\dist\\index.js"
-            ],
+            "args": ["C:\\path\\to\\coinbase-advanced-mcp\\dist\\index.js"],
             "env": {
                 "MCP_TRANSPORT": "stdio"
             }
@@ -277,10 +302,13 @@ Rules:
 Committed changes:
 
 - Initial public release: MCP stdio server, Coinbase client/auth, portfolio/pricing/allocation/order/audit services, watcher, PHP guard, tests, and docs.
-- Coinbase auth/client tests and MIT license.
-- README license clarification.
+- Coinbase auth/client tests and the historical v1 MIT release.
+- README license clarification for the historical release.
 - Audited paper trading and optional daily notional risk limit.
 - AI setup guide for onboarding new users.
+- V2 adds a separate Python research and decision engine while preserving the
+  TypeScript Coinbase runtime. The current tree uses PolyForm Strict
+  1.0.0; older published MIT versions retain their original terms.
 
 Uncommitted/in-progress changes visible in this workspace:
 
@@ -298,12 +326,12 @@ When continuing the work, preserve user changes. This worktree may be dirty.
 2. Avoid secret files.
 3. Run `npm run build`, `npm test`, and `npm run lint` before claiming implementation success.
 4. Ask MCP/live services for:
-   - `get_server_status`
-   - `get_knowledge_base`
-   - `get_portfolio_snapshot` with `quoteCurrency: "EUR"`
-   - `list_open_orders`
-   - `get_order_history` with `source: "BOTH"` and a sufficient `limit`
-   - `get_audit_log`
+    - `get_server_status`
+    - `get_knowledge_base`
+    - `get_portfolio_snapshot` with `quoteCurrency: "EUR"`
+    - `list_open_orders`
+    - `get_order_history` with `source: "BOTH"` and a sufficient `limit`
+    - `get_audit_log`
 5. Re-check live Coinbase state before any trading recommendation or cancellation.
 6. Explain every order in plain language before asking for confirmation.
 7. Execute only after exact confirmation text.

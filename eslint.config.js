@@ -24,6 +24,14 @@ export default tseslint.config(
         }
     },
     {
-        ignores: ["dist/**", "node_modules/**", "coverage/**", "scripts/**/*.mjs"]
+        ignores: [
+            "dist/**",
+            "node_modules/**",
+            "coverage/**",
+            ".venv/**",
+            "htmlcov/**",
+            "reports/**",
+            "scripts/**/*.mjs"
+        ]
     }
 );

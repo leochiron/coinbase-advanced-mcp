@@ -21,3 +21,19 @@ server/**/config.local.php
 server/**/state/
 *.log
 npm-debug.log*
+
+# Python research subsystem.
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# Reproducible research outputs and public market-data caches.
+data/market/
+data/quality/
+data/research/
+data/paper-portfolio/
+reports/
